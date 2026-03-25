@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Inventario de Dispositivos{% endblock %}
+{% block breadcrumb %}Inicio / Dispositivos{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <div class="section-title">Dispositivos Vinculados</div>
+        <div class="section-sub">Gestión de GPS, Beacons y sensores NFC activos en el sistema.</div>
+    </div>
+    <a href="{{ url_for('dispositivos_nuevo') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Vincular nuevo dispositivo
+    </a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Tipo</th>
+                    <th>Paciente Asignado</th>
+                    <th>Sede</th>
+                    <th>Batería</th>
+                    <th>Estatus</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in dispositivos %}
+                <tr>
+                    <td style="font-weight:600;">{{ d.codigo }}</td>
+                    <td>{{ d.tipo }}</td>
+                    <td>{{ d.paciente }}</td>
+                    <td>
+                        <span class="badge" style="background:{% if d.id_sucursal == 1 %}#e6f1fb; color:#0c447c{% else %}#eaf3de; color:#27500a{% endif %};">
+                            {{ d.nombre_sucursal }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if d.bateria <= 20 %}
+                            <span style="color:#a32d2d; font-weight:600;">{{ d.bateria }}%</span>
+                        {% elif d.bateria >= 80 %}
+                            <span style="color:#27500a; font-weight:600;">{{ d.bateria }}%</span>
+                        {% else %}
+                            <span style="color:#7a5a00; font-weight:600;">{{ d.bateria }}%</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if 'crítica' in d.estatus %}
+                            <span class="badge badge-alert">{{ d.estatus }}</span>
+                        {% else %}
+                            <span class="badge badge-active">{{ d.estatus }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align:center; color:#8892a4; padding:32px;">
+                        No hay dispositivos registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

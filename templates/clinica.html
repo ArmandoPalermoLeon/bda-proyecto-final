@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo Clínico — AlzMonitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+
+        a { text-decoration: none; color: inherit; }
+
+        /* ── Navbar ─────────────────────────────────────────── */
+        .cl-navbar {
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 48px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .cl-brand {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f2944;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cl-pulse {
+            width: 9px; height: 9px;
+            background: #185fa5;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+        .cl-user {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .cl-user-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+        }
+        .cl-user-role {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .cl-logout {
+            font-size: 13px;
+            font-weight: 500;
+            color: #ef4444;
+            padding: 7px 16px;
+            border-radius: 7px;
+            transition: background .15s;
+        }
+        .cl-logout:hover { background: #fef2f2; }
+
+        /* ── Tab bar ────────────────────────────────────────── */
+        .cl-tabbar {
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 48px;
+            display: flex;
+            gap: 4px;
+        }
+        .cl-tab {
+            padding: 14px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all .15s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .cl-tab:hover { color: #185fa5; }
+        .cl-tab.active {
+            color: #185fa5;
+            border-bottom-color: #185fa5;
+        }
+        .cl-tab-badge {
+            font-size: 10px;
+            font-weight: 700;
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 2px 7px;
+            border-radius: 100px;
+        }
+
+        /* ── Page wrapper ───────────────────────────────────── */
+        .cl-page { max-width: 1200px; margin: 0 auto; padding: 32px 48px; }
+
+        /* ── Tab panels ─────────────────────────────────────── */
+        .cl-panel { display: none; }
+        .cl-panel.active { display: block; }
+
+        /* ── Section headings ───────────────────────────────── */
+        .cl-section-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        .cl-section-sub {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 24px;
+        }
+
+        /* ── Stat cards ─────────────────────────────────────── */
+        .cl-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .cl-stat {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px 24px;
+        }
+        .cl-stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .cl-stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .cl-stat-sub {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+        .cl-stat.blue  .cl-stat-value { color: #185fa5; }
+        .cl-stat.green .cl-stat-value { color: #16a34a; }
+        .cl-stat.amber .cl-stat-value { color: #d97706; }
+        .cl-stat.red   .cl-stat-value { color: #dc2626; }
+
+        /* ── Two-column layout ──────────────────────────────── */
+        .cl-cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        /* ── Card ───────────────────────────────────────────── */
+        .cl-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .cl-card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .cl-card-body { padding: 0; }
+
+        /* ── Table ──────────────────────────────────────────── */
+        .cl-table-wrap { overflow-x: auto; }
+        .cl-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .cl-table th {
+            background: #f8fafc;
+            padding: 10px 16px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .cl-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+        .cl-table tbody tr:last-child td { border-bottom: none; }
+        .cl-table tbody tr:hover td { background: #f8fafc; }
+
+        /* ── Badges ─────────────────────────────────────────── */
+        .bd {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .bd-green  { background: #dcfce7; color: #15803d; }
+        .bd-blue   { background: #dbeafe; color: #1d4ed8; }
+        .bd-amber  { background: #fef3c7; color: #b45309; }
+        .bd-red    { background: #fee2e2; color: #b91c1c; }
+        .bd-gray   { background: #f1f5f9; color: #475569; }
+        .bd-purple { background: #f3e8ff; color: #7e22ce; }
+
+        /* ── Task list ──────────────────────────────────────── */
+        .cl-task-list { list-style: none; }
+        .cl-task {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .cl-task:last-child { border-bottom: none; }
+        .cl-task-time {
+            font-size: 12px;
+            font-weight: 700;
+            color: #94a3b8;
+            width: 40px;
+            flex-shrink: 0;
+            padding-top: 2px;
+        }
+        .cl-task-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+        .cl-task-dot.done    { background: #16a34a; }
+        .cl-task-dot.pending { background: #d97706; }
+        .cl-task-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #1e293b;
+            flex: 1;
+        }
+        .cl-task-who {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        /* ── EHR accordions ─────────────────────────────────── */
+        .cl-ehr-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .cl-ehr-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .cl-ehr-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px;
+            cursor: pointer;
+            user-select: none;
+            transition: background .15s;
+        }
+        .cl-ehr-trigger:hover { background: #f8fafc; }
+        .cl-ehr-trigger-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .cl-ehr-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .cl-ehr-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .cl-ehr-meta {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .cl-ehr-chevron {
+            width: 20px;
+            height: 20px;
+            color: #94a3b8;
+            transition: transform .2s;
+        }
+        .cl-ehr-card.open .cl-ehr-chevron { transform: rotate(180deg); }
+        .cl-ehr-body {
+            display: none;
+            padding: 0 24px 24px;
+            border-top: 1px solid #f1f5f9;
+        }
+        .cl-ehr-card.open .cl-ehr-body { display: block; }
+
+        /* EHR inner sections */
+        .cl-ehr-section {
+            margin-top: 20px;
+        }
+        .cl-ehr-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .cl-profile-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .cl-profile-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .cl-profile-item-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 4px;
+        }
+        .cl-profile-item-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Medication row */
+        .cl-mar-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .cl-mar-row:last-child { border-bottom: none; }
+        .cl-mar-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+        .cl-mar-detail { font-size: 12px; color: #64748b; margin-top: 2px; }
+        .cl-mar-right { display: flex; align-items: center; gap: 12px; text-align: right; }
+        .cl-mar-hora { font-size: 13px; font-weight: 700; color: #475569; }
+
+        /* Bitácora entry */
+        .cl-bitacora {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+        .cl-bitacora:last-child { margin-bottom: 0; }
+        .cl-bitacora-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .cl-bitacora-type {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .cl-bitacora-date {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .cl-bitacora-note {
+            font-size: 13px;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        /* ── Incident cards ─────────────────────────────────── */
+        .cl-incident-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .cl-incident {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid;
+            border-radius: 12px;
+            padding: 20px 24px;
+        }
+        .cl-incident.alta  { border-left-color: #dc2626; }
+        .cl-incident.media { border-left-color: #d97706; }
+        .cl-incident.baja  { border-left-color: #16a34a; }
+        .cl-incident-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .cl-incident-tipo {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .cl-incident-meta {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 3px;
+        }
+        .cl-incident-body {
+            font-size: 13px;
+            color: #475569;
+            line-height: 1.65;
+            margin-bottom: 12px;
+        }
+        .cl-incident-action {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #334155;
+            line-height: 1.5;
+        }
+        .cl-incident-action-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 4px;
+        }
+
+        /* ── Divider between tables ─────────────────────────── */
+        .cl-gap { margin-bottom: 28px; }
+    </style>
+</head>
+<body>
+
+    <!-- ── Navbar ─────────────────────────────────────────────── -->
+    <nav class="cl-navbar">
+        <div class="cl-brand">
+            <span class="cl-pulse"></span>
+            Módulo Clínico
+        </div>
+        <div class="cl-user">
+            <div>
+                <div class="cl-user-name">Dr. Médico en Turno</div>
+                <div class="cl-user-role">Portal clínico · Solo lectura operativa</div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="cl-logout">Cerrar sesión</a>
+        </div>
+    </nav>
+
+    <!-- ── Tab bar ─────────────────────────────────────────────── -->
+    <div class="cl-tabbar">
+        <div class="cl-tab active" data-tab="resumen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Resumen del día
+        </div>
+        <div class="cl-tab" data-tab="turnos">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Turnos y Asignaciones
+        </div>
+        <div class="cl-tab" data-tab="expedientes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Expedientes (EHR)
+        </div>
+        <div class="cl-tab" data-tab="incidentes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Incidentes
+            {% if alertas_activas > 0 %}
+            <span class="cl-tab-badge">{{ alertas_activas }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Page content ────────────────────────────────────────── -->
+    <div class="cl-page">
+
+        <!-- ══ TAB 1: Resumen del día ══════════════════════════ -->
+        <div class="cl-panel active" id="tab-resumen">
+
+            <div class="cl-section-title">Resumen del día</div>
+            <div class="cl-section-sub">Estado operativo actual del centro — {{ "24 de marzo, 2026" }}</div>
+
+            <!-- Stat cards -->
+            <div class="cl-stats">
+                <div class="cl-stat blue">
+                    <div class="cl-stat-label">Personal en turno</div>
+                    <div class="cl-stat-value">{{ staff_en_turno }}</div>
+                    <div class="cl-stat-sub">de {{ turnos | length }} programados hoy</div>
+                </div>
+                <div class="cl-stat green">
+                    <div class="cl-stat-label">Pacientes en censo</div>
+                    <div class="cl-stat-value">{{ total_pacientes }}</div>
+                    <div class="cl-stat-sub">activos en el centro</div>
+                </div>
+                <div class="cl-stat amber">
+                    <div class="cl-stat-label">Tareas pendientes</div>
+                    <div class="cl-stat-value">{{ tareas_pendientes }}</div>
+                    <div class="cl-stat-sub">rondas o sesiones por completar</div>
+                </div>
+                <div class="cl-stat red">
+                    <div class="cl-stat-label">Alertas activas</div>
+                    <div class="cl-stat-value">{{ alertas_activas }}</div>
+                    <div class="cl-stat-sub">requieren seguimiento médico</div>
+                </div>
+            </div>
+
+            <!-- Two columns: Tasks + Alerts -->
+            <div class="cl-cols">
+
+                <!-- Tareas del día -->
+                <div class="cl-card">
+                    <div class="cl-card-header">
+                        Agenda del día
+                        <span style="font-size:11px; font-weight:500; color:#94a3b8;">{{ tareas | length }} actividades programadas</span>
+                    </div>
+                    <div class="cl-card-body">
+                        <ul class="cl-task-list">
+                            {% for t in tareas %}
+                            <li class="cl-task">
+                                <span class="cl-task-time">{{ t.hora }}</span>
+                                <span class="cl-task-dot {% if t.estado == 'Completada' %}done{% else %}pending{% endif %}"></span>
+                                <div>
+                                    <div class="cl-task-name">{{ t.tarea }}</div>
+                                    <div class="cl-task-who">{{ t.responsable }}</div>
+                                </div>
+                                <span class="bd {% if t.estado == 'Completada' %}bd-green{% else %}bd-amber{% endif %}">
+                                    {{ t.estado }}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Alertas médicas -->
+                <div class="cl-card">
+                    <div class="cl-card-header">
+                        Alertas médicas recientes
+                        <span style="font-size:11px; font-weight:500; color:#94a3b8;">Últimas 48 h</span>
+                    </div>
+                    <div class="cl-card-body">
+                        <div class="cl-table-wrap">
+                            <table class="cl-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Paciente</th>
+                                        <th>Hora</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for a in alertas_medicas %}
+                                    <tr>
+                                        <td style="font-weight:600;">{{ a.tipo }}</td>
+                                        <td>{{ a.paciente }}</td>
+                                        <td style="color:#64748b; font-size:12px;">{{ a.fecha[8:10] }}/{{ a.fecha[5:7] }} {{ a.hora }}</td>
+                                        <td>
+                                            <span class="bd {% if a.estado == 'Atendida' or a.estado == 'Resuelto' %}bd-green{% else %}bd-amber{% endif %}">
+                                                {{ a.estado }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ══ TAB 2: Turnos y Asignaciones ════════════════════ -->
+        <div class="cl-panel" id="tab-turnos">
+
+            <div class="cl-section-title">Turnos y Asignaciones</div>
+            <div class="cl-section-sub">Personal programado para hoy y pacientes bajo su responsabilidad</div>
+
+            <!-- Shift table -->
+            <div class="cl-card cl-gap">
+                <div class="cl-card-header">Cuadro de turnos del día</div>
+                <div class="cl-card-body">
+                    <div class="cl-table-wrap">
+                        <table class="cl-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Rol</th>
+                                    <th>Turno</th>
+                                    <th>Entrada</th>
+                                    <th>Salida</th>
+                                    <th>Pacientes</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for t in turnos %}
+                                <tr>
+                                    <td style="font-weight:600;">{{ t.nombre }}</td>
+                                    <td><span class="bd bd-blue">{{ t.rol }}</span></td>
+                                    <td>{{ t.turno }}</td>
+                                    <td style="font-weight:600; color:#185fa5;">{{ t.hora_entrada }}</td>
+                                    <td style="color:#64748b;">{{ t.hora_salida }}</td>
+                                    <td style="font-size:12px; color:#475569;">{{ t.pacientes_asignados }}</td>
+                                    <td>
+                                        <span class="bd {% if t.estado == 'En turno' %}bd-green{% else %}bd-gray{% endif %}">
+                                            {{ t.estado }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current assignments -->
+            <div class="cl-card">
+                <div class="cl-card-header">Asignaciones vigentes cuidador → paciente</div>
+                <div class="cl-card-body">
+                    <div class="cl-table-wrap">
+                        <table class="cl-table">
+                            <thead>
+                                <tr>
+                                    <th>Cuidador</th>
+                                    <th>Teléfono</th>
+                                    <th>Paciente asignado</th>
+                                    <th>Desde</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in pacientes %}
+                                    {% for c in asignaciones.get(p.id_paciente, []) %}
+                                    <tr>
+                                        <td>
+                                            <span class="bd bd-blue">
+                                                {{ c.nombre_cuidador }} {{ c.apellido_p_cuid }}
+                                            </span>
+                                        </td>
+                                        <td style="font-size:12px; color:#64748b;">{{ c.telefono_cuid }}</td>
+                                        <td>
+                                            <span class="bd bd-purple">
+                                                {{ p.nombre_paciente }} {{ p.apellido_p_pac }}
+                                            </span>
+                                        </td>
+                                        <td style="font-size:12px; color:#64748b;">
+                                            {{ c.fecha_asig_cuidador[8:10] }}/{{ c.fecha_asig_cuidador[5:7] }}/{{ c.fecha_asig_cuidador[0:4] }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ══ TAB 3: Expedientes EHR ════════════════════════════ -->
+        <div class="cl-panel" id="tab-expedientes">
+
+            <div class="cl-section-title">Expedientes Clínicos (EHR)</div>
+            <div class="cl-section-sub">Haz clic en un paciente para expandir su expediente completo</div>
+
+            <div class="cl-ehr-list">
+                {% for exp in expedientes %}
+                {% set p = exp.paciente %}
+                {% set perfil = exp.perfil %}
+                <div class="cl-ehr-card" id="ehr-{{ p.id_paciente }}">
+
+                    <!-- Header / trigger -->
+                    <div class="cl-ehr-trigger" onclick="toggleEHR({{ p.id_paciente }})">
+                        <div class="cl-ehr-trigger-left">
+                            <div class="cl-ehr-avatar">
+                                {{ p.nombre_paciente[0] }}{{ p.apellido_p_pac[0] }}
+                            </div>
+                            <div>
+                                <div class="cl-ehr-name">
+                                    {{ p.nombre_paciente }} {{ p.apellido_p_pac }} {{ p.apellido_m_pac }}
+                                </div>
+                                <div class="cl-ehr-meta">
+                                    ID {{ p.id_paciente }} &nbsp;·&nbsp;
+                                    Nac. {{ p.fecha_nacimiento.strftime('%d/%m/%Y') }} &nbsp;·&nbsp;
+                                    Alzheimer: {{ perfil.etapa_alzheimer if perfil else '—' }}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span class="bd {% if p.desc_estado == 'Activo' %}bd-green{% else %}bd-amber{% endif %}">
+                                {{ p.desc_estado }}
+                            </span>
+                            <svg class="cl-ehr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="cl-ehr-body">
+
+                        <!-- Perfil clínico -->
+                        <div class="cl-ehr-section">
+                            <div class="cl-ehr-section-title">Perfil clínico</div>
+                            {% if perfil %}
+                            <div class="cl-profile-grid">
+                                <div class="cl-profile-item">
+                                    <div class="cl-profile-item-label">Grupo sanguíneo</div>
+                                    <div class="cl-profile-item-value">{{ perfil.grupo_sanguineo }}</div>
+                                </div>
+                                <div class="cl-profile-item">
+                                    <div class="cl-profile-item-label">Alergias conocidas</div>
+                                    <div class="cl-profile-item-value">{{ perfil.alergias }}</div>
+                                </div>
+                                <div class="cl-profile-item">
+                                    <div class="cl-profile-item-label">Etapa Alzheimer</div>
+                                    <div class="cl-profile-item-value">{{ perfil.etapa_alzheimer }}</div>
+                                </div>
+                                <div class="cl-profile-item">
+                                    <div class="cl-profile-item-label">Peso / Talla</div>
+                                    <div class="cl-profile-item-value">{{ perfil.peso_kg }} kg &nbsp;/&nbsp; {{ perfil.talla_cm }} cm</div>
+                                </div>
+                                <div class="cl-profile-item">
+                                    <div class="cl-profile-item-label">Médico tratante</div>
+                                    <div class="cl-profile-item-value">{{ perfil.medico_tratante }}</div>
+                                </div>
+                                <div class="cl-profile-item">
+                                    <div class="cl-profile-item-label">Contacto de emergencia</div>
+                                    <div class="cl-profile-item-value" style="font-size:12px;">{{ perfil.contacto_emergencia }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Diagnósticos -->
+                        {% if exp.enfermedades %}
+                        <div class="cl-ehr-section">
+                            <div class="cl-ehr-section-title">Diagnósticos registrados</div>
+                            <div class="cl-table-wrap">
+                                <table class="cl-table">
+                                    <thead>
+                                        <tr><th>Diagnóstico</th><th>Fecha</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for enf in exp.enfermedades %}
+                                        <tr>
+                                            <td style="font-weight:600;">{{ enf.nombre_enfermedad }}</td>
+                                            <td style="font-size:12px; color:#64748b;">
+                                                {{ enf.fecha_diag[8:10] }}/{{ enf.fecha_diag[5:7] }}/{{ enf.fecha_diag[0:4] }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Medicamentos (MAR) -->
+                        <div class="cl-ehr-section">
+                            <div class="cl-ehr-section-title">Medicamentos — Hoja de administración (MAR)</div>
+                            {% if exp.medicamentos %}
+                                {% for med in exp.medicamentos %}
+                                <div class="cl-mar-row">
+                                    <div>
+                                        <div class="cl-mar-name">{{ med.medicamento }} <span style="font-weight:400; color:#64748b;">{{ med.dosis }}</span></div>
+                                        <div class="cl-mar-detail">{{ med.via }} · {{ med.indicacion }}</div>
+                                    </div>
+                                    <div class="cl-mar-right">
+                                        <span class="cl-mar-hora">{{ med.hora }}</span>
+                                        <span class="bd {% if med.estado_hoy == 'Administrado' %}bd-green{% else %}bd-amber{% endif %}">
+                                            {{ med.estado_hoy }}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p style="font-size:13px; color:#94a3b8; padding:8px 0;">Sin medicamentos registrados.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Bitácoras -->
+                        <div class="cl-ehr-section">
+                            <div class="cl-ehr-section-title">Bitácoras de sesión</div>
+                            {% if exp.bitacoras %}
+                                {% for b in exp.bitacoras %}
+                                <div class="cl-bitacora">
+                                    <div class="cl-bitacora-header">
+                                        <div>
+                                            <span class="cl-bitacora-type">{{ b.tipo_sesion }}</span>
+                                            <span style="font-size:11px; color:#94a3b8; margin-left:10px;">{{ b.terapeuta }}</span>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <span class="bd
+                                                {% if b.estado == 'Favorable' %}bd-green
+                                                {% elif b.estado == 'Estable' %}bd-blue
+                                                {% elif b.estado == 'Atención requerida' %}bd-amber
+                                                {% else %}bd-gray{% endif %}">
+                                                {{ b.estado }}
+                                            </span>
+                                            <span class="cl-bitacora-date">{{ b.fecha[8:10] }}/{{ b.fecha[5:7] }}/{{ b.fecha[0:4] }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="cl-bitacora-note">{{ b.nota }}</div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p style="font-size:13px; color:#94a3b8; padding:8px 0;">Sin bitácoras registradas.</p>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ══ TAB 4: Incidentes y Seguimiento ═════════════════ -->
+        <div class="cl-panel" id="tab-incidentes">
+
+            <div class="cl-section-title">Incidentes y Seguimiento</div>
+            <div class="cl-section-sub">Registro de eventos clínicamente relevantes y las acciones tomadas</div>
+
+            <div class="cl-incident-list">
+                {% for inc in incidentes %}
+                <div class="cl-incident {{ inc.gravedad | lower }}">
+                    <div class="cl-incident-header">
+                        <div>
+                            <div class="cl-incident-tipo">{{ inc.tipo }}</div>
+                            <div class="cl-incident-meta">
+                                {{ inc.paciente }} &nbsp;·&nbsp;
+                                {{ inc.fecha[8:10] }}/{{ inc.fecha[5:7] }}/{{ inc.fecha[0:4] }} a las {{ inc.hora }}
+                            </div>
+                        </div>
+                        <span class="bd
+                            {% if inc.gravedad == 'Alta' %}bd-red
+                            {% elif inc.gravedad == 'Media' %}bd-amber
+                            {% else %}bd-green{% endif %}">
+                            Gravedad: {{ inc.gravedad }}
+                        </span>
+                    </div>
+                    <div class="cl-incident-body">{{ inc.descripcion }}</div>
+                    <div class="cl-incident-action">
+                        <div class="cl-incident-action-label">Acción tomada</div>
+                        {{ inc.accion_tomada }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+
+    </div><!-- /cl-page -->
+
+    <script>
+        // ── Tab switching ─────────────────────────────────────
+        document.querySelectorAll('.cl-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.tab;
+                document.querySelectorAll('.cl-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.cl-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + target).classList.add('active');
+            });
+        });
+
+        // ── EHR accordion ─────────────────────────────────────
+        function toggleEHR(id) {
+            const card = document.getElementById('ehr-' + id);
+            card.classList.toggle('open');
+        }
+    </script>
+
+</body>
+</html>

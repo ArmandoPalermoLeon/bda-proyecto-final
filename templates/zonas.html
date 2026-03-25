@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Zonas Seguras{% endblock %}
+{% block breadcrumb %}Inicio / Zonas Seguras{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <div class="section-title">Zonas Seguras Configuradas</div>
+        <div class="section-sub">Geocercas establecidas para la activación de alertas por abandono.</div>
+    </div>
+    <a href="{{ url_for('zonas_nueva') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Agregar zona segura
+    </a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre de la Zona</th>
+                    <th>Paciente</th>
+                    <th>Sede</th>
+                    <th>Radio Permitido</th>
+                    <th>Notificar a</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for z in zonas %}
+                <tr>
+                    <td style="font-weight:600;">{{ z.nombre_zona }}</td>
+                    <td>{{ z.paciente }}</td>
+                    <td>
+                        <span class="badge" style="background:{% if z.id_sucursal == 1 %}#e6f1fb; color:#0c447c{% else %}#eaf3de; color:#27500a{% endif %};">
+                            {{ z.nombre_sucursal }}
+                        </span>
+                    </td>
+                    <td>{{ z.radio_metros }} metros</td>
+                    <td>{{ z.notificar_a }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align:center; color:#8892a4; padding:32px;">
+                        No hay zonas seguras configuradas.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

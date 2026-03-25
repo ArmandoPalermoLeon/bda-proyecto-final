@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlzMonitor — Monitoreo Activo para Centros de Cuidado Alzheimer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="public-body">
+
+    <!-- ── Navbar ────────────────────────────────────────────────── -->
+    <nav class="public-navbar">
+        <div class="public-brand">
+            <span class="pulse-dot"></span>AlzMonitor
+        </div>
+        <div class="public-links">
+            <a href="#inicio">Inicio</a>
+            <a href="#objetivos">Objetivos</a>
+            <a href="#modulos">Módulos</a>
+            <a href="#como-funciona">¿Cómo funciona?</a>
+        </div>
+        <div class="public-actions">
+            <a href="{{ url_for('login') }}" class="btn-ingresar">Iniciar Sesión</a>
+        </div>
+    </nav>
+
+
+    <section class="hero-section" id="inicio">
+        <div class="hero-content">
+            <span class="lp-chip">
+                <span class="pulse-dot"></span>
+                Monitoreo activo 24 / 7
+            </span>
+            <h1 class="hero-title">
+                Tranquilidad para ti,<br>
+                <span style="color:#185fa5;">seguridad para ellos.</span>
+            </h1>
+            <p class="hero-subtitle">
+                AlzMonitor centraliza el seguimiento de pacientes con Alzheimer o deterioro cognitivo en un único sistema.
+                Combina rastreo GPS, sensores NFC, geocercas y expedientes clínicos para que cada centro de cuidado opere
+                con precisión y respuesta inmediata.
+            </p>
+            <div class="hero-buttons">
+                <a href="{{ url_for('login') }}" class="btn-ingresar" style="padding:14px 36px; font-size:16px;">
+                    Acceder al Portal
+                </a>
+                <a href="#modulos" class="btn-lp-outline">
+                    Ver módulos
+                </a>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="lp-stats-bar">
+        <div class="lp-stats-inner">
+            <div class="lp-stat">
+                <span class="lp-stat-value">100%</span>
+                <span class="lp-stat-label">Trazabilidad de pacientes</span>
+            </div>
+            <div class="lp-stat-divider"></div>
+            <div class="lp-stat">
+                <span class="lp-stat-value">&lt; 30 s</span>
+                <span class="lp-stat-label">Tiempo de respuesta a alertas</span>
+            </div>
+            <div class="lp-stat-divider"></div>
+            <div class="lp-stat">
+                <span class="lp-stat-value">Multi-sede</span>
+                <span class="lp-stat-label">Gestión de sucursales por zona</span>
+            </div>
+            <div class="lp-stat-divider"></div>
+            <div class="lp-stat">
+                <span class="lp-stat-value">GPS · NFC · BLE</span>
+                <span class="lp-stat-label">Tecnologías de localización integradas</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Objetivos centrales ───────────────────────────────────── -->
+    <section class="lp-section lp-section-light" id="objetivos">
+        <div class="lp-section-header">
+            <span class="lp-label">Propósito del sistema</span>
+            <h2>Tres objetivos, un solo sistema.</h2>
+            <p>AlzMonitor fue diseñado para resolver los desafíos operativos y clínicos más críticos de los centros de cuidado especializado.</p>
+        </div>
+
+        <div class="lp-objectives-grid">
+            <div class="lp-obj-card">
+                <div class="lp-obj-icon lp-icon-blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <h3>Seguridad del paciente</h3>
+                <p>
+                    Prevención de deambulación y respuesta inmediata a emergencias mediante rastreo de ubicación
+                    en tiempo real. Cada salida de zona genera una alerta instantánea al personal responsable.
+                </p>
+            </div>
+
+            <div class="lp-obj-card">
+                <div class="lp-obj-icon lp-icon-green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                    </svg>
+                </div>
+                <h3>Eficiencia operativa</h3>
+                <p>
+                    Centralización de pacientes, cuidadores y personal médico en una sola plataforma con base de datos
+                    unificada. Elimina duplicidades, reduce errores administrativos y acelera la asignación de turnos.
+                </p>
+            </div>
+
+            <div class="lp-obj-card">
+                <div class="lp-obj-icon lp-icon-amber">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                </div>
+                <h3>Enfoque clínico</h3>
+                <p>
+                    Interfaz minimalista para médicos y terapeutas que permite revisar expedientes, sesiones terapéuticas
+                    y asignaciones sin distracciones operativas. Cada rol accede solo a lo que necesita.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Módulos y características ────────────────────────────── -->
+    <section class="lp-section lp-section-dark" id="modulos">
+        <div class="lp-section-header lp-header-light">
+            <span class="lp-label lp-label-light">Arquitectura funcional</span>
+            <h2>Cuatro módulos. Una plataforma integrada.</h2>
+            <p>Cada módulo responde a un área específica de operación dentro del centro de cuidado.</p>
+        </div>
+
+        <div class="lp-modules-grid">
+
+            <div class="lp-module-card">
+                <div class="lp-module-num">01</div>
+                <h3>Hardware & Monitoreo Activo</h3>
+                <p>
+                    Registro y seguimiento de dispositivos físicos asignados a pacientes: pulseras GPS, beacons de
+                    habitación y sensores NFC para verificación de medicación. El sistema integra tecnologías
+                    BLE, GPS y NFC en un solo inventario centralizado.
+                </p>
+                <ul class="lp-module-list">
+                    <li>Rastreo GPS y Beacons en interiores</li>
+                    <li>Verificación de toma de medicamentos vía NFC</li>
+                    <li>Monitoreo de batería por dispositivo</li>
+                </ul>
+            </div>
+
+            <div class="lp-module-card">
+                <div class="lp-module-num">02</div>
+                <h3>Zonas Seguras (Geofencing)</h3>
+                <p>
+                    Los administradores definen geocercas virtuales (jardín, sala de terapia, perímetro del
+                    edificio). Si un paciente cruza el límite establecido, el sistema dispara una alerta
+                    inmediata clasificada por tipo y urgencia.
+                </p>
+                <ul class="lp-module-list">
+                    <li>Configuración de radio permitido por paciente</li>
+                    <li>Alertas por abandono de zona en tiempo real</li>
+                    <li>Notificación dirigida al responsable asignado</li>
+                </ul>
+            </div>
+
+            <div class="lp-module-card">
+                <div class="lp-module-num">03</div>
+                <h3>Dashboard Administrativo</h3>
+                <p>
+                    Panel de control centralizado con estadísticas en tiempo real: total de pacientes activos,
+                    cuidadores disponibles, dispositivos en línea y alertas pendientes. Incluye CRUD completo
+                    para gestión de expedientes y directorios.
+                </p>
+                <ul class="lp-module-list">
+                    <li>Gestión de pacientes, cuidadores e historiales</li>
+                    <li>Asignación de cuidadores por paciente y fecha</li>
+                    <li>Soporte multi-sede con gestión por zonas geográficas</li>
+                </ul>
+            </div>
+
+            <div class="lp-module-card">
+                <div class="lp-module-num">04</div>
+                <h3>Portal Clínico / Médico</h3>
+                <p>
+                    Interfaz de tema claro diseñada exclusivamente para médicos y terapeutas. Permite la
+                    consulta de expedientes sin acceso a módulos operativos, reduciendo la carga cognitiva
+                    y evitando errores de acceso.
+                </p>
+                <ul class="lp-module-list">
+                    <li>Vista limpia orientada a expedientes clínicos</li>
+                    <li>Registro de sesiones y evolución del paciente</li>
+                    <li>Separación estricta de roles por perfil de acceso</li>
+                </ul>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ── Cómo funciona ─────────────────────────────────────────── -->
+    <section class="lp-section lp-section-light" id="como-funciona">
+        <div class="lp-section-header">
+            <span class="lp-label">Flujo del sistema</span>
+            <h2>¿Cómo funciona AlzMonitor?</h2>
+            <p>Del hardware al expediente clínico, en cuatro pasos operativos.</p>
+        </div>
+
+        <div class="lp-steps">
+            <div class="lp-step">
+                <div class="lp-step-num">1</div>
+                <div class="lp-step-body">
+                    <h4>Alta del paciente y asignación de dispositivo</h4>
+                    <p>El administrador registra al paciente, carga su historial clínico y vincula un dispositivo GPS o NFC. El sistema asigna automáticamente al cuidador correspondiente según la zona.</p>
+                </div>
+            </div>
+            <div class="lp-step">
+                <div class="lp-step-num">2</div>
+                <div class="lp-step-body">
+                    <h4>Configuración de zonas seguras</h4>
+                    <p>Se definen las geocercas permitidas para cada paciente o grupo. Cada zona tiene un radio específico y un destinatario de notificación definido (familiar, cuidador, enfermería).</p>
+                </div>
+            </div>
+            <div class="lp-step">
+                <div class="lp-step-num">3</div>
+                <div class="lp-step-body">
+                    <h4>Monitoreo activo y gestión de alertas</h4>
+                    <p>Los dispositivos transmiten señal en tiempo real. Cuando se detecta una anomalía (zona abandonada, batería crítica, SOS), el sistema registra la alerta y notifica al personal.</p>
+                </div>
+            </div>
+            <div class="lp-step">
+                <div class="lp-step-num">4</div>
+                <div class="lp-step-body">
+                    <h4>Revisión clínica y seguimiento terapéutico</h4>
+                    <p>El médico o terapeuta accede al portal clínico para revisar evolución del paciente, sesiones previas y recomendaciones de tratamiento sin interferir con la operación administrativa.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── CTA Final ─────────────────────────────────────────────── -->
+    <section class="lp-cta">
+        <div class="lp-cta-inner">
+            <h2>Un sistema pensado para escalar.</h2>
+            <p>
+                AlzMonitor fue diseñado con una arquitectura multi-sede: cada sucursal opera dentro de su zona
+                geográfica y comparte la misma base de datos centralizada. Agregar un nuevo centro de cuidado
+                es tan simple como registrar una nueva sucursal.
+            </p>
+            <a href="{{ url_for('login') }}" class="btn-ingresar" style="padding:14px 36px; font-size:16px;">
+                Ingresar al sistema
+            </a>
+        </div>
+    </section>
+
+    <!-- ── Footer ────────────────────────────────────────────────── -->
+    <footer class="public-footer">
+        <div class="lp-footer-inner">
+            <div class="lp-footer-brand">
+                <span class="pulse-dot"></span> AlzMonitor
+            </div>
+            <p style="margin-top:8px; font-size:13px;">
+                Sistema integral de monitoreo para centros de atención de Alzheimer.
+            </p>
+            <p style="margin-top:20px; font-size:12px; color:#b0bac8;">
+                &copy; 2026 AlzMonitor — Proyecto académico · Bases de Datos Avanzadas
+            </p>
+        </div>
+    </footer>
+
+</body>
+</html>

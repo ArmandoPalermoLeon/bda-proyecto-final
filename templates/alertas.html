@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Alertas{% endblock %}
+{% block breadcrumb %}Inicio / Reporte de Alertas{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <div class="section-title">Reporte de Alertas Recientes</div>
+        <div class="section-sub">Historial de incidentes detectados por los dispositivos en las últimas 48 horas.</div>
+    </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom: 20px;">
+    <div class="card" style="border-left: 4px solid #a32d2d; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span class="badge badge-alert">CRÍTICA - Botón SOS</span>
+            <span style="color: #8892a4; font-size: 12px;">Hoy, 14:32 hrs</span>
+        </div>
+        <h3 style="margin-bottom: 5px; color: #0f2944;">Paciente: Roberto Gómez</h3>
+        <p style="color: #4a5568; font-size: 14px; margin-bottom: 15px;">El paciente presionó el botón de pánico del Beacon B-102. Ubicación registrada: Habitación principal.</p>
+        <button class="btn btn-secondary btn-sm">Ver detalles completos</button>
+    </div>
+
+    <div class="card" style="border-left: 4px solid #eab308; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span class="badge" style="background:#fef08a; color:#854d0e;">ADVERTENCIA - Salida de Zona</span>
+            <span style="color: #8892a4; font-size: 12px;">Hoy, 10:15 hrs</span>
+        </div>
+        <h3 style="margin-bottom: 5px; color: #0f2944;">Paciente: María Elena Salinas</h3>
+        <p style="color: #4a5568; font-size: 14px; margin-bottom: 15px;">El dispositivo GPS-405 salió de la "Zona Segura: Jardín". Última ubicación: Calle de los Pinos #42.</p>
+        <button class="btn btn-secondary btn-sm">Ver en mapa</button>
+    </div>
+
+    <div class="card" style="border-left: 4px solid #185fa5; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span class="badge" style="background:#e0f2fe; color:#0369a1;">INFO - Batería Baja</span>
+            <span style="color: #8892a4; font-size: 12px;">Ayer, 18:45 hrs</span>
+        </div>
+        <h3 style="margin-bottom: 5px; color: #0f2944;">Paciente: Carlos Ruíz</h3>
+        <p style="color: #4a5568; font-size: 14px; margin-bottom: 15px;">El nivel de batería del GPS-112 bajó al 15%. Se notificó al cuidador asignado.</p>
+        <button class="btn btn-secondary btn-sm">Contactar cuidador</button>
+    </div>
+</div>
+{% endblock %}
