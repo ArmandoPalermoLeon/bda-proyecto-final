@@ -452,6 +452,109 @@ INCIDENTES = [
     },
 ]
 
+# ── Contactos de emergencia por id_paciente ───────────────────────────────────
+CONTACTOS_EMERGENCIA = {
+    1: [
+        {"nombre": "Lucía García Martínez",   "relacion": "Hija",   "telefono": "555-9901", "prioridad": 1},
+    ],
+    2: [
+        {"nombre": "Pedro Hernández Soto",    "relacion": "Hijo",   "telefono": "555-9902", "prioridad": 1},
+        {"nombre": "Laura Hernández Cruz",    "relacion": "Nuera",  "telefono": "555-9910", "prioridad": 2},
+    ],
+    3: [
+        {"nombre": "Carmen Vega Ruiz",        "relacion": "Hermana","telefono": "555-9903", "prioridad": 1},
+    ],
+    4: [
+        {"nombre": "Rosa Mendoza Vargas",     "relacion": "Esposa", "telefono": "555-9904", "prioridad": 1},
+        {"nombre": "Jorge Torres Mendoza",    "relacion": "Hijo",   "telefono": "555-9911", "prioridad": 2},
+    ],
+}
+
+# ── Registro de ingreso a sede por id_paciente ────────────────────────────────
+SEDE_PACIENTES = {
+    1: {"id_sede": 1, "nombre_sede": "Sede Norte", "fecha_ingreso": "2020-06-01", "hora_ingreso": "09:30"},
+    2: {"id_sede": 1, "nombre_sede": "Sede Norte", "fecha_ingreso": "2019-12-15", "hora_ingreso": "11:00"},
+    3: {"id_sede": 2, "nombre_sede": "Sede Sur",   "fecha_ingreso": "2022-02-10", "hora_ingreso": "10:15"},
+    4: {"id_sede": 2, "nombre_sede": "Sede Sur",   "fecha_ingreso": "2021-04-05", "hora_ingreso": "14:00"},
+}
+
+# ── Kit GPS + Beacon asignado por id_paciente ─────────────────────────────────
+ASIGNACION_KIT = {
+    1: {"codigo_gps": "GPS-405", "codigo_beacon": "B-101", "codigo_nfc": "NFC-001", "fecha_entrega": "2020-06-01"},
+    2: {"codigo_gps": "GPS-302", "codigo_beacon": "B-102", "codigo_nfc": None,      "fecha_entrega": "2019-12-15"},
+    3: {"codigo_gps": "GPS-112", "codigo_beacon": "B-201", "codigo_nfc": None,      "fecha_entrega": "2022-02-10"},
+    4: {"codigo_gps": "GPS-203", "codigo_beacon": "B-202", "codigo_nfc": "NFC-002", "fecha_entrega": "2021-04-05"},
+}
+
+# ── Visitantes registrados ────────────────────────────────────────────────────
+VISITANTES = [
+    {"id_visitante": 1, "nombre": "Lucía",     "apellido_p": "García",    "apellido_m": "Martínez", "relacion": "Hija",   "telefono": "555-9901"},
+    {"id_visitante": 2, "nombre": "Pedro",     "apellido_p": "Hernández", "apellido_m": "Soto",     "relacion": "Hijo",   "telefono": "555-9902"},
+    {"id_visitante": 3, "nombre": "Carmen",    "apellido_p": "Vega",      "apellido_m": "Ruiz",     "relacion": "Hermana","telefono": "555-9903"},
+    {"id_visitante": 4, "nombre": "Rosa",      "apellido_p": "Mendoza",   "apellido_m": "Vargas",   "relacion": "Esposa", "telefono": "555-9904"},
+    {"id_visitante": 5, "nombre": "Jorge",     "apellido_p": "Torres",    "apellido_m": "Mendoza",  "relacion": "Hijo",   "telefono": "555-9911"},
+]
+
+# ── Visitas (recientes + hoy) ─────────────────────────────────────────────────
+VISITAS = [
+    {"id_visita": 1, "id_paciente": 1, "paciente": "María García López",    "visitante": "Lucía García Martínez",  "relacion": "Hija",    "id_sucursal": 1, "nombre_sucursal": "Sede Norte", "fecha_entrada": "2026-03-24", "hora_entrada": "10:00", "fecha_salida": "2026-03-24", "hora_salida": "12:30"},
+    {"id_visita": 2, "id_paciente": 2, "paciente": "Roberto Hernández Soto","visitante": "Pedro Hernández Soto",   "relacion": "Hijo",    "id_sucursal": 1, "nombre_sucursal": "Sede Norte", "fecha_entrada": "2026-03-24", "hora_entrada": "16:00", "fecha_salida": None,         "hora_salida": None},
+    {"id_visita": 3, "id_paciente": 4, "paciente": "José Torres Mendoza",   "visitante": "Rosa Mendoza Vargas",    "relacion": "Esposa",  "id_sucursal": 2, "nombre_sucursal": "Sede Sur",   "fecha_entrada": "2026-03-23", "hora_entrada": "14:00", "fecha_salida": "2026-03-23", "hora_salida": "16:00"},
+    {"id_visita": 4, "id_paciente": 3, "paciente": "Elena Ramírez Vega",    "visitante": "Carmen Vega Ruiz",       "relacion": "Hermana", "id_sucursal": 2, "nombre_sucursal": "Sede Sur",   "fecha_entrada": "2026-03-22", "hora_entrada": "11:00", "fecha_salida": "2026-03-22", "hora_salida": "13:00"},
+    {"id_visita": 5, "id_paciente": 1, "paciente": "María García López",    "visitante": "Lucía García Martínez",  "relacion": "Hija",    "id_sucursal": 1, "nombre_sucursal": "Sede Norte", "fecha_entrada": "2026-03-17", "hora_entrada": "10:00", "fecha_salida": "2026-03-17", "hora_salida": "11:45"},
+]
+
+# ── Entregas externas ─────────────────────────────────────────────────────────
+ENTREGAS_EXTERNAS = [
+    {"id_entrega": 1, "id_paciente": 1, "paciente": "María García López",    "visitante": "Lucía García Martínez",  "descripcion": "Ropa de temporada (2 blusas, 1 pantalón)", "estado": "Recibido",  "fecha": "2026-03-24", "hora": "10:15", "cuidador_receptor": "Ana Martínez"},
+    {"id_entrega": 2, "id_paciente": 4, "paciente": "José Torres Mendoza",   "visitante": "Rosa Mendoza Vargas",    "descripcion": "Libro ilustrado y tableta de chocolate",   "estado": "Recibido",  "fecha": "2026-03-23", "hora": "14:10", "cuidador_receptor": "Ana Martínez"},
+    {"id_entrega": 3, "id_paciente": 2, "paciente": "Roberto Hernández Soto","visitante": "Pedro Hernández Soto",   "descripcion": "Medicamento externo (requiere autorización médica)", "estado": "Pendiente", "fecha": "2026-03-24", "hora": "16:05", "cuidador_receptor": None},
+]
+
+# ── Farmacia ──────────────────────────────────────────────────────────────────
+
+FARMACIAS_PROVEEDORAS = [
+    {"id_farmacia": 1, "nombre": "Farmacia del Ahorro (Mayoreo)", "telefono": "55-6000-0001", "municipio": "Cuauhtémoc", "estado": "CDMX", "RFC": "FAH800101XX1"},
+    {"id_farmacia": 2, "nombre": "Genéricos Lacasa",              "telefono": "55-6000-0002", "municipio": "Tlalpan",    "estado": "CDMX", "RFC": "GLA950615XX2"},
+]
+
+INVENTARIO_MEDICINAS = [
+    # Sede Norte
+    {"GTIN": "7501234001", "nombre_medicamento": "Donepezilo 10 mg",             "id_sede": 1, "nombre_sede": "Sede Norte", "stock_actual": 28, "stock_minimo": 30},
+    {"GTIN": "7501234002", "nombre_medicamento": "Memantina 20 mg",              "id_sede": 1, "nombre_sede": "Sede Norte", "stock_actual": 45, "stock_minimo": 20},
+    {"GTIN": "7501234003", "nombre_medicamento": "Lorazepam 1 mg",               "id_sede": 1, "nombre_sede": "Sede Norte", "stock_actual":  8, "stock_minimo": 15},
+    {"GTIN": "7501234004", "nombre_medicamento": "Metformina 500 mg",            "id_sede": 1, "nombre_sede": "Sede Norte", "stock_actual": 60, "stock_minimo": 30},
+    {"GTIN": "7501234005", "nombre_medicamento": "Amlodipino 5 mg",              "id_sede": 1, "nombre_sede": "Sede Norte", "stock_actual": 22, "stock_minimo": 20},
+    # Sede Sur
+    {"GTIN": "7501234006", "nombre_medicamento": "Rivastigmina parche 4.6 mg",   "id_sede": 2, "nombre_sede": "Sede Sur",   "stock_actual": 12, "stock_minimo": 10},
+    {"GTIN": "7501234007", "nombre_medicamento": "Donepezilo 5 mg",              "id_sede": 2, "nombre_sede": "Sede Sur",   "stock_actual":  5, "stock_minimo": 20},
+    {"GTIN": "7501234008", "nombre_medicamento": "Amiodarona 100 mg",            "id_sede": 2, "nombre_sede": "Sede Sur",   "stock_actual": 18, "stock_minimo": 15},
+]
+
+SUMINISTROS = [
+    {"id_suministro": 1, "farmacia": "Farmacia del Ahorro (Mayoreo)", "id_sede": 1, "nombre_sede": "Sede Norte", "fecha_entrega": "2026-03-26", "estado": "Pendiente",  "medicamentos": ["Donepezilo 10 mg × 60", "Lorazepam 1 mg × 30"]},
+    {"id_suministro": 2, "farmacia": "Genéricos Lacasa",              "id_sede": 2, "nombre_sede": "Sede Sur",   "fecha_entrega": "2026-03-25", "estado": "Pendiente",  "medicamentos": ["Donepezilo 5 mg × 40"]},
+    {"id_suministro": 3, "farmacia": "Farmacia del Ahorro (Mayoreo)", "id_sede": 1, "nombre_sede": "Sede Norte", "fecha_entrega": "2026-03-10", "estado": "Entregado",  "medicamentos": ["Metformina 500 mg × 120", "Amlodipino 5 mg × 60"]},
+]
+
+# ── Comedor ───────────────────────────────────────────────────────────────────
+
+COCINEROS = [
+    {"id_cocinero": 10, "nombre": "Tomás",     "apellido_p": "Rivas", "apellido_m": "Cruz",    "id_sucursal": 1, "nombre_sucursal": "Sede Norte"},
+    {"id_cocinero": 11, "nombre": "Esperanza", "apellido_p": "Luna",  "apellido_m": "Jiménez", "id_sucursal": 2, "nombre_sucursal": "Sede Sur"},
+]
+
+BITACORA_COMEDOR = [
+    {"id": 1, "id_sede": 1, "nombre_sede": "Sede Norte", "cocinero": "Tomás Rivas Cruz",      "fecha": "2026-03-24", "turno": "Desayuno", "menu_nombre": "Avena con fruta y jugo de naranja",              "cantidad_platos": 4, "incidencias": None},
+    {"id": 2, "id_sede": 1, "nombre_sede": "Sede Norte", "cocinero": "Tomás Rivas Cruz",      "fecha": "2026-03-24", "turno": "Comida",   "menu_nombre": "Caldo de pollo, arroz integral, gelatina",       "cantidad_platos": 4, "incidencias": "Paciente Roberto Hernández rechazó el caldo, se sustituyó por sopa de pasta."},
+    {"id": 3, "id_sede": 2, "nombre_sede": "Sede Sur",   "cocinero": "Esperanza Luna Jiménez","fecha": "2026-03-24", "turno": "Desayuno", "menu_nombre": "Yogurt, pan integral tostado, fruta picada",      "cantidad_platos": 2, "incidencias": None},
+    {"id": 4, "id_sede": 2, "nombre_sede": "Sede Sur",   "cocinero": "Esperanza Luna Jiménez","fecha": "2026-03-24", "turno": "Comida",   "menu_nombre": "Sopa de lentejas, pechuga a la plancha, verduras al vapor", "cantidad_platos": 2, "incidencias": None},
+    {"id": 5, "id_sede": 1, "nombre_sede": "Sede Norte", "cocinero": "Tomás Rivas Cruz",      "fecha": "2026-03-23", "turno": "Desayuno", "menu_nombre": "Huevos revueltos, frijoles, tortillas de maíz",  "cantidad_platos": 4, "incidencias": None},
+    {"id": 6, "id_sede": 1, "nombre_sede": "Sede Norte", "cocinero": "Tomás Rivas Cruz",      "fecha": "2026-03-23", "turno": "Comida",   "menu_nombre": "Pozole rojo, tostadas, agua de horchata",        "cantidad_platos": 4, "incidencias": None},
+    {"id": 7, "id_sede": 2, "nombre_sede": "Sede Sur",   "cocinero": "Esperanza Luna Jiménez","fecha": "2026-03-23", "turno": "Desayuno", "menu_nombre": "Papaya con limón, pan dulce, leche descremada",   "cantidad_platos": 2, "incidencias": None},
+    {"id": 8, "id_sede": 2, "nombre_sede": "Sede Sur",   "cocinero": "Esperanza Luna Jiménez","fecha": "2026-03-23", "turno": "Comida",   "menu_nombre": "Crema de elote, filete de pescado al horno, arroz", "cantidad_platos": 2, "incidencias": None},
+]
+
 ASIGNACIONES_CUIDADORES = {
     1: [
         {

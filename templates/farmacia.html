@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Farmacia{% endblock %}
+{% block page_title %}Farmacia{% endblock %}
+{% block breadcrumb %}Inicio / Farmacia{% endblock %}
+
+{% block content %}
+
+<div class="stats-grid" style="grid-template-columns: repeat(4,1fr); margin-bottom:24px;">
+    <div class="stat-card blue">
+        <div class="stat-label">Medicamentos</div>
+        <div class="stat-value">{{ inventario | length }}</div>
+        <div class="stat-sub">en inventario general</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">Stock crítico</div>
+        <div class="stat-value">{{ criticos | length }}</div>
+        <div class="stat-sub">bajo mínimo operativo</div>
+    </div>
+    <div class="stat-card amber">
+        <div class="stat-label">Pedidos pendientes</div>
+        <div class="stat-value">{{ suministros | selectattr('estado','equalto','Pendiente') | list | length }}</div>
+        <div class="stat-sub">órdenes en tránsito</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-label">Proveedores</div>
+        <div class="stat-value">{{ farmacias | length }}</div>
+        <div class="stat-sub">farmacias activas</div>
+    </div>
+</div>
+
+<!-- Inventario de medicamentos -->
+<div class="section-header" style="margin-bottom:14px;">
+    <div>
+        <div class="section-title">Inventario de medicamentos</div>
+        <div class="section-sub">Estado actual del stock por sede — resaltado en rojo cuando el stock cae bajo el mínimo</div>
+    </div>
+    {% if criticos %}
+    <span style="font-size:10px; background:#FFF1F2; color:#BE123C; font-weight:700; padding:4px 12px; border-radius:100px; letter-spacing:.5px; text-transform:uppercase; border:1px solid #FECDD3;">
+        {{ criticos | length }} críticos
+    </span>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:24px;">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Medicamento</th>
+                    <th>Sede</th>
+                    <th>GTIN</th>
+                    <th>Stock actual</th>
+                    <th>Stock mínimo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in inventario %}
+                <tr {% if m.stock_actual < m.stock_minimo %}style="background:#FFF8F8;"{% endif %}>
+                    <td style="font-weight:600; color:#0F172A;">{{ m.nombre_medicamento }}</td>
+                    <td style="font-size:12px; color:#64748B;">{{ m.nombre_sede }}</td>
+                    <td style="font-size:11px; color:#94A3B8; font-variant-numeric:tabular-nums;">{{ m.GTIN }}</td>
+                    <td style="font-weight:700; font-variant-numeric:tabular-nums;
+                               color:{% if m.stock_actual < m.stock_minimo %}#E11D48{% else %}#059669{% endif %};">
+                        {{ m.stock_actual }}
+                    </td>
+                    <td style="font-size:12px; color:#94A3B8; font-variant-numeric:tabular-nums;">{{ m.stock_minimo }}</td>
+                    <td>
+                        {% if m.stock_actual < m.stock_minimo %}
+                            <span class="badge" style="background:#FFF1F2; color:#BE123C; border:1px solid #FECDD3; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">Crítico</span>
+                        {% else %}
+                            <span class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px;">
+
+    <!-- Órdenes de suministro -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Órdenes de suministro</div>
+                <div style="font-size:11px; color:#8892a4; margin-top:2px;">{{ suministros | length }} órdenes registradas</div>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Medicamento</th>
+                        <th>Cant.</th>
+                        <th>Proveedor</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in suministros %}
+                    <tr>
+                        <td style="font-weight:600; font-size:13px;">{{ s.medicamentos | join(' · ') }}</td>
+                        <td style="font-weight:700; color:#0E7490; font-variant-numeric:tabular-nums;">{{ s.medicamentos | length }}</td>
+                        <td style="font-size:12px; color:#64748B;">{{ s.farmacia }}</td>
+                        <td style="font-size:11px; color:#94A3B8;">{{ s.fecha_entrega[8:10] }}/{{ s.fecha_entrega[5:7] }}/{{ s.fecha_entrega[0:4] }}</td>
+                        <td>
+                            {% if s.estado == 'Pendiente' %}
+                                <span class="badge" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">Pendiente</span>
+                            {% else %}
+                                <span class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">{{ s.estado }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Directorio de proveedores -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Farmacias proveedoras</div>
+                <div style="font-size:11px; color:#8892a4; margin-top:2px;">Directorio de proveedores activos</div>
+            </div>
+        </div>
+        <div style="padding:0;">
+            {% for f in farmacias %}
+            <div style="padding:16px 20px; border-bottom:{% if not loop.last %}1px solid #F1F5F9{% else %}none{% endif %};">
+                <div style="display:flex; align-items:flex-start; gap:14px;">
+                    <div style="width:40px; height:40px; border-radius:10px; background:#CFFAFE; color:#0E4F60;
+                                display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid #A5F3FC;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                            <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+                        </svg>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-size:14px; font-weight:700; color:#0F172A;">{{ f.nombre }}</div>
+                        <div style="font-size:12px; color:#64748B; margin-top:3px;">{{ f.municipio }}, {{ f.estado }}</div>
+                        <div style="display:flex; gap:16px; margin-top:8px;">
+                            <div style="font-size:11px; color:#94A3B8;">
+                                <span style="font-weight:600; color:#475569;">Tel:</span> {{ f.telefono }}
+                            </div>
+                            <div style="font-size:11px; color:#94A3B8;">
+                                <span style="font-weight:600; color:#475569;">RFC:</span> {{ f.RFC }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Visitas{% endblock %}
+{% block page_title %}Visitas y Entregas{% endblock %}
+{% block breadcrumb %}Inicio / Visitas{% endblock %}
+
+{% block content %}
+
+<div class="stats-grid" style="grid-template-columns: repeat(3,1fr); margin-bottom:24px;">
+    <div class="stat-card blue">
+        <div class="stat-label">Visitas hoy</div>
+        <div class="stat-value">{{ visitas_hoy | length }}</div>
+        <div class="stat-sub">ingresos registrados hoy</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-label">Historial</div>
+        <div class="stat-value">{{ visitas_hist | length }}</div>
+        <div class="stat-sub">visitas anteriores</div>
+    </div>
+    <div class="stat-card amber">
+        <div class="stat-label">Entregas pendientes</div>
+        <div class="stat-value">{{ entregas | selectattr('estado','equalto','Pendiente') | list | length }}</div>
+        <div class="stat-sub">por recibir o entregar</div>
+    </div>
+</div>
+
+<!-- Visitas del día -->
+<div class="section-header" style="margin-bottom:14px;">
+    <div>
+        <div class="section-title">Visitas de hoy</div>
+        <div class="section-sub">Registro de entradas y salidas del día — 24 de marzo, 2026</div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:24px;">
+    {% if visitas_hoy %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Visitante</th>
+                    <th>Parentesco</th>
+                    <th>Paciente visitado</th>
+                    <th>Sede</th>
+                    <th>Hora entrada</th>
+                    <th>Hora salida</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in visitas_hoy %}
+                <tr>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="width:30px; height:30px; border-radius:8px; background:#CFFAFE; color:#0E4F60;
+                                        display:flex; align-items:center; justify-content:center;
+                                        font-size:11px; font-weight:700; flex-shrink:0; border:1px solid #A5F3FC;">
+                                {{ v.visitante[0] }}
+                            </div>
+                            <div>
+                                <div style="font-weight:600; font-size:13px; color:#0F172A;">{{ v.visitante }}</div>
+                                <div style="font-size:11px; color:#94A3B8;">{{ v.telefono }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="font-size:12px; color:#64748B;">{{ v.relacion }}</td>
+                    <td style="font-weight:500; font-size:13px;">{{ v.paciente }}</td>
+                    <td style="font-size:11px; color:#64748B;">{{ v.nombre_sucursal }}</td>
+                    <td style="font-weight:700; color:#0E7490; font-size:13px; font-variant-numeric:tabular-nums;">{{ v.hora_entrada }}</td>
+                    <td style="color:#64748B; font-size:13px; font-variant-numeric:tabular-nums;">
+                        {{ v.hora_salida if v.hora_salida else '—' }}
+                    </td>
+                    <td>
+                        {% if v.hora_salida %}
+                            <span class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">Completada</span>
+                        {% else %}
+                            <span class="badge" style="background:#CFFAFE; color:#0E4F60; border:1px solid #A5F3FC; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">En curso</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center; padding:48px; color:#94A3B8; font-size:13px;">
+        No se han registrado visitas hoy.
+    </div>
+    {% endif %}
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:24px;">
+
+    <!-- Historial de visitas -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Historial de visitas</div>
+                <div style="font-size:11px; color:#8892a4; margin-top:2px;">{{ visitas_hist | length }} registros anteriores</div>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Visitante</th>
+                        <th>Paciente</th>
+                        <th>Fecha</th>
+                        <th>Duración</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in visitas_hist %}
+                    <tr>
+                        <td style="font-weight:500; font-size:13px;">{{ v.visitante }}</td>
+                        <td style="font-size:12px; color:#64748B;">{{ v.paciente }}</td>
+                        <td style="font-size:12px; color:#94A3B8; font-variant-numeric:tabular-nums;">
+                            {{ v.fecha_entrada[8:10] }}/{{ v.fecha_entrada[5:7] }}/{{ v.fecha_entrada[0:4] }}
+                        </td>
+                        <td style="font-size:12px; color:#475569; font-variant-numeric:tabular-nums;">
+                            {{ v.hora_entrada }}
+                            {% if v.hora_salida %} – {{ v.hora_salida }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Entregas externas -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Entregas externas</div>
+                <div style="font-size:11px; color:#8892a4; margin-top:2px;">Paquetes y envíos de familiares</div>
+            </div>
+        </div>
+        <div style="padding:0;">
+            {% if entregas %}
+            {% for e in entregas %}
+            <div style="padding:14px 20px; border-bottom:{% if not loop.last %}1px solid #F1F5F9{% else %}none{% endif %};">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+                    <div>
+                        <div style="font-size:13px; font-weight:600; color:#0F172A;">{{ e.descripcion }}</div>
+                        <div style="font-size:12px; color:#64748B; margin-top:2px;">
+                            Para: <span style="font-weight:500; color:#334155;">{{ e.paciente }}</span>
+                        </div>
+                        <div style="font-size:11px; color:#94A3B8; margin-top:4px;">
+                            Remitente: {{ e.visitante }} ·
+                            {{ e.fecha[8:10] }}/{{ e.fecha[5:7] }}/{{ e.fecha[0:4] }}
+                        </div>
+                    </div>
+                    <div style="flex-shrink:0;">
+                        {% if e.estado == 'Pendiente' %}
+                            <span class="badge" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">Pendiente</span>
+                        {% else %}
+                            <span class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">{{ e.estado }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align:center; padding:32px; color:#94A3B8; font-size:13px;">
+                Sin entregas registradas.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

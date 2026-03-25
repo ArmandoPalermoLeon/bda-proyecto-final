@@ -137,6 +137,190 @@
         {% endif %}
     </div>
 
+    <!-- Contactos de emergencia -->
+    <div class="section-header" style="margin-bottom:12px;">
+        <div>
+            <div class="section-title">Contactos de emergencia</div>
+            <div class="section-sub">{{ contactos | length }} contacto(s) registrado(s)</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+        {% if contactos %}
+            {% for c in contactos %}
+            <div style="display:flex; align-items:center; justify-content:space-between;
+                        padding:14px 20px;
+                        border-bottom:{% if not loop.last %}1px solid #f0f2f5{% else %}none{% endif %};">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:36px; height:36px; border-radius:8px; background:#CFFAFE;
+                                display:flex; align-items:center; justify-content:center;
+                                font-size:12px; font-weight:700; color:#0E4F60; flex-shrink:0; border:1px solid #A5F3FC;">
+                        {{ c.nombre[0] }}
+                    </div>
+                    <div>
+                        <div style="font-size:14px; font-weight:600; color:#1a1a2e;">{{ c.nombre }}</div>
+                        <div style="font-size:12px; color:#8892a4; margin-top:1px;">{{ c.relacion }}</div>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:13px; font-weight:600; color:#2d3748;">{{ c.telefono }}</div>
+                    {% if c.prioridad == 1 %}
+                    <span style="font-size:10px; background:#CFFAFE; color:#0E4F60; font-weight:700; padding:2px 8px; border-radius:100px; border:1px solid #A5F3FC;">Principal</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align:center; color:#8892a4; padding:32px; font-size:13px;">
+                No hay contactos de emergencia registrados.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Kit de dispositivos asignado -->
+    {% if kit %}
+    <div class="section-header" style="margin-bottom:12px;">
+        <div>
+            <div class="section-title">Kit de dispositivos asignado</div>
+            <div class="section-sub">Equipos de localización y monitoreo · asignado {{ kit.fecha_entrega[8:10] }}/{{ kit.fecha_entrega[5:7] }}/{{ kit.fecha_entrega[0:4] }}</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0;">
+            <div style="padding:16px 20px; border-right:1px solid #F1F5F9;">
+                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px;">GPS</div>
+                {% if kit.codigo_gps %}
+                <div style="font-size:14px; font-weight:700; color:#0F172A; font-variant-numeric:tabular-nums;">{{ kit.codigo_gps }}</div>
+                <span style="font-size:10px; background:#ECFDF5; color:#065F46; font-weight:700; padding:2px 8px; border-radius:100px; border:1px solid #A7F3D0; margin-top:6px; display:inline-block;">Activo</span>
+                {% else %}
+                <div style="font-size:12px; color:#94A3B8;">No asignado</div>
+                {% endif %}
+            </div>
+            <div style="padding:16px 20px; border-right:1px solid #F1F5F9;">
+                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px;">Beacon</div>
+                {% if kit.codigo_beacon %}
+                <div style="font-size:14px; font-weight:700; color:#0F172A; font-variant-numeric:tabular-nums;">{{ kit.codigo_beacon }}</div>
+                <span style="font-size:10px; background:#ECFDF5; color:#065F46; font-weight:700; padding:2px 8px; border-radius:100px; border:1px solid #A7F3D0; margin-top:6px; display:inline-block;">Activo</span>
+                {% else %}
+                <div style="font-size:12px; color:#94A3B8;">No asignado</div>
+                {% endif %}
+            </div>
+            <div style="padding:16px 20px;">
+                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px;">NFC</div>
+                {% if kit.codigo_nfc %}
+                <div style="font-size:14px; font-weight:700; color:#0F172A; font-variant-numeric:tabular-nums;">{{ kit.codigo_nfc }}</div>
+                <span style="font-size:10px; background:#ECFDF5; color:#065F46; font-weight:700; padding:2px 8px; border-radius:100px; border:1px solid #A7F3D0; margin-top:6px; display:inline-block;">Activo</span>
+                {% else %}
+                <div style="font-size:12px; color:#94A3B8;">No asignado</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Registro de ingreso a la sede -->
+    {% if ingreso %}
+    <div class="section-header" style="margin-bottom:12px;">
+        <div>
+            <div class="section-title">Registro de ingreso</div>
+            <div class="section-sub">Datos de admisión al centro de atención</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0;">
+            <div style="padding:16px 20px; border-right:1px solid #F1F5F9;">
+                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px;">Sede</div>
+                <div style="font-size:13px; font-weight:600; color:#0F172A;">{{ ingreso.nombre_sede }}</div>
+            </div>
+            <div style="padding:16px 20px; border-right:1px solid #F1F5F9;">
+                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px;">Fecha de ingreso</div>
+                <div style="font-size:13px; font-weight:600; color:#0F172A; font-variant-numeric:tabular-nums;">
+                    {{ ingreso.fecha_ingreso[8:10] }}/{{ ingreso.fecha_ingreso[5:7] }}/{{ ingreso.fecha_ingreso[0:4] }}
+                </div>
+            </div>
+            <div style="padding:16px 20px;">
+                <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px;">Hora ingreso</div>
+                <div style="font-size:13px; font-weight:600; color:#0F172A; font-variant-numeric:tabular-nums;">{{ ingreso.hora_ingreso }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Visitas recientes -->
+    <div class="section-header" style="margin-bottom:12px;">
+        <div>
+            <div class="section-title">Visitas recibidas</div>
+            <div class="section-sub">{{ visitas | length }} visita(s) registrada(s)</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+        {% if visitas %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Visitante</th>
+                        <th>Parentesco</th>
+                        <th>Fecha</th>
+                        <th>Entrada</th>
+                        <th>Salida</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in visitas %}
+                    <tr>
+                        <td style="font-weight:500;">{{ v.visitante }}</td>
+                        <td style="font-size:12px; color:#64748B;">{{ v.relacion }}</td>
+                        <td style="font-size:12px; color:#94A3B8; font-variant-numeric:tabular-nums;">
+                            {{ v.fecha_entrada[8:10] }}/{{ v.fecha_entrada[5:7] }}/{{ v.fecha_entrada[0:4] }}
+                        </td>
+                        <td style="font-weight:600; color:#0E7490; font-size:12px; font-variant-numeric:tabular-nums;">{{ v.hora_entrada }}</td>
+                        <td style="font-size:12px; color:#64748B; font-variant-numeric:tabular-nums;">{{ v.hora_salida if v.hora_salida else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <div style="text-align:center; color:#8892a4; padding:32px; font-size:13px;">
+                No hay visitas registradas para este paciente.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Entregas externas -->
+    {% if entregas %}
+    <div class="section-header" style="margin-bottom:12px;">
+        <div>
+            <div class="section-title">Entregas externas</div>
+            <div class="section-sub">Paquetes y envíos recibidos de familiares</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+        {% for e in entregas %}
+        <div style="display:flex; align-items:center; justify-content:space-between;
+                    padding:14px 20px;
+                    border-bottom:{% if not loop.last %}1px solid #f0f2f5{% else %}none{% endif %};">
+            <div>
+                <div style="font-size:13px; font-weight:600; color:#0F172A;">{{ e.descripcion }}</div>
+                <div style="font-size:12px; color:#64748B; margin-top:2px;">
+                    Remitente: {{ e.visitante }} · {{ e.fecha[8:10] }}/{{ e.fecha[5:7] }}/{{ e.fecha[0:4] }}
+                </div>
+            </div>
+            {% if e.estado == 'Pendiente' %}
+                <span class="badge" style="background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">Pendiente</span>
+            {% else %}
+                <span class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-size:10px; padding:3px 9px; border-radius:100px; font-weight:700;">{{ e.estado }}</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <a href="{{ url_for('pacientes_lista') }}" class="btn btn-secondary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="19" y1="12" x2="5" y2="12"/>

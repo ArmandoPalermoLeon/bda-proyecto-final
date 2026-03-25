@@ -58,6 +58,25 @@
             </a>
         </div>
         <div class="nav-section">
+            <span class="nav-label">Operaciones</span>
+            <a href="{{ url_for('visitas') }}" class="nav-item {% if request.endpoint == 'visitas' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Visitas
+            </a>
+            <a href="{{ url_for('farmacia') }}" class="nav-item {% if request.endpoint == 'farmacia' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+                </svg>
+                Farmacia
+            </a>
+        </div>
+
+        <div class="nav-section">
             <span class="nav-label">Monitoreo</span>
             <a href="{{ url_for('alertas') }}" class="nav-item {% if request.endpoint == 'alertas' %}active{% endif %}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -38,12 +38,20 @@ def init_routes(app):
                 ),
             })
 
+        hoy = "2026-03-24"
+        medicamentos_criticos = [m for m in data.INVENTARIO_MEDICINAS if m["stock_actual"] < m["stock_minimo"]]
+        suministros_pendientes = [s for s in data.SUMINISTROS if s["estado"] == "Pendiente"]
+        visitas_hoy = [v for v in data.VISITAS if v["fecha_entrada"] == hoy]
+
         return render_template(
             "dashboard.html",
             stats=stats,
             alertas=data.ALERTAS_RECIENTES,
             stats_por_sede=stats_por_sede,
             sucursales=data.SUCURSALES,
+            medicamentos_criticos=medicamentos_criticos,
+            suministros_pendientes=suministros_pendientes,
+            visitas_hoy=visitas_hoy,
         )
 
 
@@ -83,12 +91,22 @@ def init_routes(app):
         estado       = next((e for e in data.ESTADOS_PACIENTE if e["id_estado"] == paciente["id_estado"]), None)
         enfermedades = data.ENFERMEDADES.get(id, [])
         cuidadores   = data.ASIGNACIONES_CUIDADORES.get(id, [])
+        contactos    = data.CONTACTOS_EMERGENCIA.get(id, [])
+        kit          = data.ASIGNACION_KIT.get(id)
+        ingreso      = data.SEDE_PACIENTES.get(id)
+        visitas      = [v for v in data.VISITAS if v["id_paciente"] == id]
+        entregas     = [e for e in data.ENTREGAS_EXTERNAS if e["id_paciente"] == id]
         return render_template(
             "pacientes/historial.html",
             paciente=paciente,
             estado=estado,
             enfermedades=enfermedades,
             cuidadores=cuidadores,
+            contactos=contactos,
+            kit=kit,
+            ingreso=ingreso,
+            visitas=visitas,
+            entregas=entregas,
         )
 
     @app.route("/cuidadores")
@@ -150,3 +168,32 @@ def init_routes(app):
             flash("Zona segura registrada correctamente.", "success")
             return redirect(url_for("zonas"))
         return render_template("zonas_form.html", pacientes=data.PACIENTES)
+
+    # ── Farmacia ───────────────────────────────────────────────────────────────
+
+    @app.route("/farmacia")
+    @login_requerido
+    def farmacia():
+        criticos = [m for m in data.INVENTARIO_MEDICINAS if m["stock_actual"] < m["stock_minimo"]]
+        return render_template(
+            "farmacia.html",
+            inventario=data.INVENTARIO_MEDICINAS,
+            suministros=data.SUMINISTROS,
+            farmacias=data.FARMACIAS_PROVEEDORAS,
+            criticos=criticos,
+        )
+
+    # ── Visitas ────────────────────────────────────────────────────────────────
+
+    @app.route("/visitas")
+    @login_requerido
+    def visitas():
+        hoy = "2026-03-24"
+        visitas_hoy  = [v for v in data.VISITAS if v["fecha_entrada"] == hoy]
+        visitas_hist = [v for v in data.VISITAS if v["fecha_entrada"] != hoy]
+        return render_template(
+            "visitas.html",
+            visitas_hoy=visitas_hoy,
+            visitas_hist=visitas_hist,
+            entregas=data.ENTREGAS_EXTERNAS,
+        )

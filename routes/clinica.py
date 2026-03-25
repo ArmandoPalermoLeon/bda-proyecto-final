@@ -47,7 +47,11 @@ def init_routes(app):
                 "enfermedades": data.ENFERMEDADES.get(pid, []),
             })
 
-        incidentes_sede = [i for i in data.INCIDENTES if i["id_paciente"] in ids_sede]
+        incidentes_sede  = [i for i in data.INCIDENTES if i["id_paciente"] in ids_sede]
+        hoy = "2026-03-24"
+        comedor_hoy      = [b for b in data.BITACORA_COMEDOR if b["id_sede"] == id_sucursal and b["fecha"] == hoy]
+        visitas_hoy      = [v for v in data.VISITAS if v["id_sucursal"] == id_sucursal and v["fecha_entrada"] == hoy]
+        entregas_pend    = [e for e in data.ENTREGAS_EXTERNAS if e["id_paciente"] in ids_sede and e["estado"] == "Pendiente"]
 
         return render_template(
             "clinica.html",
@@ -63,4 +67,7 @@ def init_routes(app):
             pacientes=pacientes_sede,
             expedientes=expedientes,
             incidentes=incidentes_sede,
+            comedor_hoy=comedor_hoy,
+            visitas_hoy=visitas_hoy,
+            entregas_pendientes=entregas_pend,
         )
