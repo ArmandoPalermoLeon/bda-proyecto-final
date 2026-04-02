@@ -84,6 +84,50 @@ Key schema facts:
 - **Paciente deletion**: soft-delete only — `UPDATE pacientes SET id_estado = 3`.
 - **Alerta status values**: `'Activa'` and `'Atendida'` (not `'Resuelta'`).
 
+## What the App Can and Cannot Do
+
+### Pacientes
+- **Can**: List active patients (id_estado != 3) with sede; create new patient (manual ID required); edit name, DOB, estado; soft-delete (sets id_estado = 3).
+- **Can**: View patient historial — enfermedades, assigned cuidadores, contactos de emergencia, assigned IoT kit (GPS + Beacon serials), sede ingreso, visit history, external deliveries.
+- **Cannot**: Assign a patient to a sede from the form (no UI for INSERT into `sede_pacientes`); link diseases (`tiene_enfermedad`) from the UI; add emergency contacts (`paciente_contactos`) from the UI; assign an IoT kit (`asignacion_kit`) from the UI.
+
+### Cuidadores
+- **Can**: List cuidadores with their sede; create (inserts into both `empleados` and `cuidadores` in one transaction); edit name/phone/CURP; hard-delete (removes from `cuidadores` then `empleados`).
+- **Cannot**: Assign a cuidador to a patient (`asignacion_cuidador`) from the UI; assign a cuidador to a sede (`sede_empleados`) from the UI.
+
+### Alertas
+- **Can**: List all alerts with patient name and sede; create new alert (manual ID, pick patient + type + datetime); mark alert as `Atendida`; hard-delete alert.
+- **Cannot**: Link an alert to its triggering IoT event (`alerta_evento_origen`) from the UI.
+
+### Dispositivos
+- **Can**: List devices with last GPS battery level and assigned patient; create new device (manual ID, serial, tipo GPS/BEACON/NFC, modelo — estado defaults to `Activo`); edit serial/tipo/modelo/estado; hard-delete.
+- **Cannot**: Assign a device to a patient kit (`asignacion_kit`) from the UI; view GPS location history or beacon detections from the UI.
+
+### Zonas Seguras
+- **Can**: List zonas with sede, coordinates, and radius; create new zona (nombre, latitud, longitud, radio); edit; hard-delete.
+- **Cannot**: Link a zona to a sede (`sede_zonas`) from the UI after creation; manage gateways within a zona from the UI.
+
+### Farmacia
+- **Can**: View full medicine inventory per sede with stock vs minimum; highlight critical stock (below minimum); adjust stock inline (UPDATE `inventario_medicinas`); create a new supply order (`suministros`) linked to a pharmacy provider and sede.
+- **Cannot**: Add medicines to a supply order (`suministro_medicinas` detail lines) from the UI; add/edit/delete `farmacias_proveedoras` from the UI; add/edit `medicamentos` catalog from the UI; manage `entregas_externas` from the farmacia module.
+
+### Visitas
+- **Can**: List today's visits and last 50 historical visits; list recent external deliveries; register a new visit (links existing `visitantes` to a patient + sede with date/time).
+- **Cannot**: Create a new `visitante` (visitor) from the UI — must exist in DB already; register visit departure time (hora_salida) from the UI; register an `entrega_externa` from the UI.
+
+### Portal Clínico (rol: médico)
+- **Can**: View sede list with active patient count; view per-sede dashboard with patient list, their enfermedades, cuidador assignments, IoT kit, and active alerts.
+- **Cannot**: Edit or create anything — read-only role.
+
+### Sedes
+- **No admin CRUD UI** — the 3 sedes seeded by the DDL are fixed. There is no route to create, edit, or delete sedes.
+
+### Tables with No UI at All
+The following DB tables exist in the schema but have zero routes pointing to them:
+`lecturas_gps`, `detecciones_beacon`, `lecturas_nfc`, `recetas`, `receta_medicamentos`, `receta_nfc`, `tiene_enfermedad`, `enfermedades`, `contactos_emergencia`, `paciente_contactos`, `asignacion_kit`, `asignacion_cuidador`, `sede_pacientes`, `sede_empleados`, `sede_zonas`, `zona_beacons`, `gateways`, `bitacora_comedor`, `cocineros`, `alerta_evento_origen`, `entregas_externas`, `visitantes`.
+
+---
+
 ## Design System
 
 CSS variables in `static/css/main.css`:
