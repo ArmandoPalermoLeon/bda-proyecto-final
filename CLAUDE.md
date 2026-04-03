@@ -62,6 +62,32 @@ SQL aliases map real DB column names to the names templates expect (e.g. `nombre
 ### Frontend
 Vanilla JS only (`static/js/main.js`, 25 lines) — handles auto-dismiss alerts and deletion confirmations. No build step, no bundler.
 
+## IoT Hardware
+
+Physical devices selected for the project. **Not yet configured — do not add API endpoints or web UI for device data ingestion until the user says so.**
+
+| Role | Model | Technology |
+|------|-------|-----------|
+| GPS | PG12 GPS Tracker — Luejnbogty | GPRS/4G + GPS |
+| Beacon | FeasyBeacon FSC-BP104D Waterproof | Bluetooth 5.1 BLE |
+| NFC | RFID/NFC Tag Blue Fob — NTAG213, 13.56 MHz | ISO 14443A (passive) |
+
+Full integration plan (endpoints, data flow, DB tables, config steps, implementation order) is in `DEVICES.md`. When the time comes:
+- GPS → `POST /api/gps/lectura` → inserts `lecturas_gps`, evaluates zones, generates `alertas` + `alerta_evento_origen`
+- Beacon → `POST /api/beacon/deteccion` → inserts `detecciones_beacon` (requires BLE gateways per zone)
+- NFC → `POST /api/nfc/lectura` → inserts `lecturas_nfc` (tag NDEF points to endpoint; manual fallback already exists at `/recetas/<id>`)
+
+## Advanced Queries — finalqueries.sql
+
+All advanced queries are complete in `finalqueries.sql`:
+- `ORDER BY total_salidas_zona DESC` (was ASC — corrected)
+- Last-location query uses `DISTINCT ON (id_dispositivo) ORDER BY fecha_hora DESC, id_lectura DESC`
+- Adherence query rewritten to use `lecturas_nfc` instead of `detecciones_beacon`
+- `ACOS()` wrapped with `LEAST(1, GREATEST(-1, ...))` to prevent domain errors
+- Analytical queries added: temporal alert trends, MTTA, time-outside-zone per patient, SLA by sede
+
+**Do not re-fix these — they are already done.**
+
 ## Schema — ProyectoFinalDDL.sql
 
 The corrected DDL (`ProyectoFinalDDL.sql`) incorporates three changes from the professor's feedback over the original `avance de proyecto.sql`:

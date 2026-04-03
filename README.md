@@ -151,6 +151,20 @@ Contiene el diseno de 22 stored procedures para todas las operaciones importante
 
 ---
 
+## Dispositivos IoT
+
+Los dispositivos físicos seleccionados para el sistema son:
+
+| Rol | Modelo | Tecnología |
+|-----|--------|-----------|
+| GPS | PG12 GPS Tracker — Luejnbogty | GPRS / 4G + GPS |
+| Beacon | FeasyBeacon FSC-BP104D Waterproof | Bluetooth 5.1 BLE |
+| NFC | RFID/NFC Tag Blue Fob — NTAG213, 13.56 MHz | ISO 14443A |
+
+Pendientes de configuración. Ver `DEVICES.md` para la arquitectura de integración completa (endpoints, flujo de datos, tablas afectadas y orden de implementación).
+
+---
+
 ## Estructura del proyecto
 
 ```
