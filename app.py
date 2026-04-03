@@ -863,14 +863,30 @@ def farmacia_suministro_nuevo():
             id_sede     = int(request.form["id_sede"])
             fecha       = request.form["fecha_entrega"]
             estado      = request.form.get("estado", "Pendiente")
+            gtins       = request.form.getlist("GTIN[]")
+            cantidades  = request.form.getlist("cantidad[]")
+
+            if not any(g.strip() for g in gtins):
+                flash("Debe agregar al menos un medicamento a la orden.", "error")
+                raise ValueError("sin_lineas")
 
             db.execute("""
                 INSERT INTO suministros (id_suministro, id_farmacia, id_sede, fecha_entrega, estado)
                 VALUES (%s, %s, %s, %s, %s)
             """, (id_sum, id_farmacia, id_sede, fecha, estado))
 
+            for gtin, cant in zip(gtins, cantidades):
+                if not gtin.strip():
+                    continue
+                db.execute("""
+                    INSERT INTO suministro_medicinas (id_suministro, GTIN, cantidad)
+                    VALUES (%s, %s, %s)
+                """, (id_sum, gtin.strip(), int(cant)))
+
             flash("Orden de suministro registrada.", "success")
-            return redirect(url_for("farmacia"))
+            return redirect(url_for("farmacia_suministro_detalle", id=id_sum))
+        except ValueError:
+            pass
         except Exception as e:
             flash(f"Error al registrar suministro: {e}", "error")
 
@@ -881,6 +897,94 @@ def farmacia_suministro_nuevo():
         medicamentos=medicamentos,
         fecha_hoy=date.today().isoformat(),
     )
+
+
+@app.route("/farmacia/suministro/<int:id>")
+@admin_requerido
+def farmacia_suministro_detalle(id):
+    suministro = db.one("""
+        SELECT su.id_suministro,
+               TO_CHAR(su.fecha_entrega, 'YYYY-MM-DD') AS fecha_entrega,
+               su.hora_entrega,
+               su.estado,
+               fp.nombre AS farmacia,
+               fp.telefono AS farmacia_tel,
+               s.nombre_sede,
+               s.id_sede
+        FROM suministros su
+        JOIN farmacias_proveedoras fp ON su.id_farmacia = fp.id_farmacia
+        JOIN sedes s                  ON su.id_sede     = s.id_sede
+        WHERE su.id_suministro = %s
+    """, (id,))
+
+    if not suministro:
+        flash("Orden no encontrada.", "error")
+        return redirect(url_for("farmacia"))
+
+    lineas = db.query("""
+        SELECT sm.GTIN, sm.cantidad,
+               m.nombre_medicamento,
+               im.stock_actual,
+               im.stock_minimo
+        FROM suministro_medicinas sm
+        JOIN medicamentos m ON sm.GTIN = m.GTIN
+        LEFT JOIN inventario_medicinas im ON sm.GTIN = im.GTIN AND im.id_sede = %s
+        ORDER BY m.nombre_medicamento
+    """, (suministro["id_sede"],))
+
+    estados = db.query("SELECT estado FROM cat_estado_suministro ORDER BY estado")
+
+    return render_template(
+        "farmacia_suministro_detalle.html",
+        suministro=suministro,
+        lineas=lineas,
+        estados=estados,
+        medicamentos=db.query("SELECT GTIN, nombre_medicamento FROM medicamentos ORDER BY nombre_medicamento"),
+    )
+
+
+@app.route("/farmacia/suministro/<int:id>/estado", methods=["POST"])
+@admin_requerido
+def farmacia_suministro_estado(id):
+    try:
+        nuevo_estado = request.form["estado"]
+        db.execute(
+            "UPDATE suministros SET estado = %s WHERE id_suministro = %s",
+            (nuevo_estado, id),
+        )
+        flash("Estado de la orden actualizado.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("farmacia_suministro_detalle", id=id))
+
+
+@app.route("/farmacia/suministro/<int:id>/linea/agregar", methods=["POST"])
+@admin_requerido
+def farmacia_suministro_agregar_linea(id):
+    try:
+        gtin     = request.form["GTIN"].strip()
+        cantidad = int(request.form["cantidad"])
+        db.execute("""
+            INSERT INTO suministro_medicinas (id_suministro, GTIN, cantidad)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (id_suministro, GTIN)
+            DO UPDATE SET cantidad = suministro_medicinas.cantidad + EXCLUDED.cantidad
+        """, (id, gtin, cantidad))
+        flash("Medicamento agregado a la orden.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("farmacia_suministro_detalle", id=id))
+
+
+@app.route("/farmacia/suministro/<int:id>/eliminar", methods=["POST"])
+@admin_requerido
+def farmacia_suministro_eliminar(id):
+    try:
+        db.execute("DELETE FROM suministros WHERE id_suministro = %s", (id,))
+        flash("Orden eliminada.", "success")
+    except Exception as e:
+        flash(f"Error al eliminar: {e}", "error")
+    return redirect(url_for("farmacia"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
