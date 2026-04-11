@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes{% endblock %}
+{% block page_title %}Reportes{% endblock %}
+{% block breadcrumb %}Inicio / Reportes{% endblock %}
+
+{% block content %}
+
+<!-- Header con KPIs rápidos -->
+<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
+
+    <div style="background:#fff; border-radius:12px; border:1px solid #E0F2FE;
+                padding:16px 20px; display:flex; align-items:center; gap:14px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04);">
+        <div style="width:40px; height:40px; border-radius:10px; background:#E0F2FE;
+                    display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="2" width="18" height="18">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        </div>
+        <div>
+            <div style="font-size:26px; font-weight:800; color:#0E7490; line-height:1; font-variant-numeric:tabular-nums;">{{ stats.pacientes_activos }}</div>
+            <div style="font-size:11px; color:#94A3B8; margin-top:2px; font-weight:600; text-transform:uppercase; letter-spacing:.6px;">Pacientes activos</div>
+        </div>
+    </div>
+
+    <div style="background:#fff; border-radius:12px; border:1px solid {% if stats.alertas_activas > 0 %}#FECDD3{% else %}#D1FAE5{% endif %};
+                padding:16px 20px; display:flex; align-items:center; gap:14px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04);">
+        <div style="width:40px; height:40px; border-radius:10px; background:{% if stats.alertas_activas > 0 %}#FFF1F2{% else %}#DCFCE7{% endif %};
+                    display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="{% if stats.alertas_activas > 0 %}#E11D48{% else %}#059669{% endif %}" stroke-width="2" width="18" height="18">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </div>
+        <div>
+            <div style="font-size:26px; font-weight:800; color:{% if stats.alertas_activas > 0 %}#E11D48{% else %}#059669{% endif %}; line-height:1; font-variant-numeric:tabular-nums;">{{ stats.alertas_activas }}</div>
+            <div style="font-size:11px; color:#94A3B8; margin-top:2px; font-weight:600; text-transform:uppercase; letter-spacing:.6px;">Alertas activas</div>
+        </div>
+    </div>
+
+    <div style="background:#fff; border-radius:12px; border:1px solid #EDE9FE;
+                padding:16px 20px; display:flex; align-items:center; gap:14px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04);">
+        <div style="width:40px; height:40px; border-radius:10px; background:#EDE9FE;
+                    display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" width="18" height="18">
+                <path d="M9 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-4"/>
+                <path d="M18 9h-6M18 13h-5M18 17h-4"/>
+            </svg>
+        </div>
+        <div>
+            <div style="font-size:26px; font-weight:800; color:#7C3AED; line-height:1; font-variant-numeric:tabular-nums;">{{ stats.lecturas_nfc_hoy }}</div>
+            <div style="font-size:11px; color:#94A3B8; margin-top:2px; font-weight:600; text-transform:uppercase; letter-spacing:.6px;">Lecturas NFC hoy</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Banner de estado -->
+<div style="background: linear-gradient(135deg, #082F3E 0%, #0E4F60 100%);
+            border-radius:14px; padding:18px 24px; margin-bottom:28px;
+            display:flex; align-items:center; justify-content:space-between; gap:16px;
+            border:1px solid rgba(45,212,191,0.15);">
+    <div style="display:flex; align-items:center; gap:14px;">
+        <div style="width:44px; height:44px; border-radius:12px; background:rgba(45,212,191,0.15);
+                    display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#5EEAD4" stroke-width="2" width="20" height="20">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+        </div>
+        <div>
+            <div style="font-size:15px; font-weight:700; color:#fff; letter-spacing:-0.1px;">Módulo de reportes analíticos</div>
+            <div style="font-size:12px; color:rgba(255,255,255,0.45); margin-top:2px;">
+                23 consultas de producción disponibles en <code style="background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:4px; font-size:11px; color:#A5F3FC;">finalqueries.sql</code>
+            </div>
+        </div>
+    </div>
+    <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(45,212,191,0.12);
+                border:1px solid rgba(45,212,191,0.25); border-radius:100px;
+                padding:5px 14px; font-size:10.5px; font-weight:700; color:#5EEAD4;
+                letter-spacing:.6px; text-transform:uppercase; white-space:nowrap;">
+        <span class="pulse-dot" style="width:6px;height:6px;"></span>
+        Vistas listas para conectar
+    </div>
+</div>
+
+
+<!-- ── Sección 1: Monitoreo en Tiempo Real ── -->
+<div class="section-header" style="margin-bottom:14px;">
+    <div>
+        <div class="section-title">Monitoreo en tiempo real</div>
+        <div class="section-sub">Q1 – Q5 · Estado GPS, alertas y batería</div>
+    </div>
+    <span style="font-size:10px; background:#FEF9C3; color:#854D0E; font-weight:700; padding:4px 12px;
+                 border-radius:100px; letter-spacing:.5px; text-transform:uppercase; border:1px solid #FDE68A;">
+        5 consultas
+    </span>
+</div>
+<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
+
+    {% set rt_reports = [
+        ('Q1', 'Alertas activas con origen IoT', 'Pacientes en alerta, tipo de evento y regla que la disparó. JOIN con alerta_evento_origen.', '#E11D48', '#FFF1F2', '#FECDD3'),
+        ('Q2', 'Pacientes con alertas simultáneas', 'Pacientes con más de una alerta activa al mismo tiempo — prioridad de atención.', '#D97706', '#FFFBEB', '#FDE68A'),
+        ('Q3', 'Última ubicación GPS', 'Posición más reciente de cada dispositivo GPS. DISTINCT ON por id_dispositivo.', '#0E7490', '#E0F2FE', '#BAE6FD'),
+        ('Q4', 'Pacientes fuera de zona activos', 'Pacientes con alerta Salida de Zona en estatus Activa — requiere atención inmediata.', '#E11D48', '#FFF1F2', '#FECDD3'),
+        ('Q5', 'Batería crítica GPS ≤ 20%', 'Dispositivos GPS con nivel de batería crítico. Fuente: lecturas_gps.nivel_bateria.', '#D97706', '#FFFBEB', '#FDE68A')
+    ] %}
+
+    {% for q, titulo, desc, color, bg, border in rt_reports[:3] %}
+    <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:{{ color }}; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <span style="font-size:10px; font-weight:700; color:{{ color }}; letter-spacing:1px; text-transform:uppercase; background:{{ bg }}; padding:2px 8px; border-radius:4px; border:1px solid {{ border }};">{{ q }}</span>
+            <span style="font-size:10px; font-weight:700; color:#94A3B8; background:#F8FAFC; padding:2px 8px; border-radius:100px; border:1px solid #E2E8F0; letter-spacing:.3px; text-transform:uppercase;">Próximamente</span>
+        </div>
+        <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px; line-height:1.3;">{{ titulo }}</div>
+        <div style="font-size:11px; color:#64748B; line-height:1.55;">{{ desc }}</div>
+    </div>
+    {% endfor %}
+
+</div>
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
+    {% for q, titulo, desc, color, bg, border in rt_reports[3:] %}
+    <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:{{ color }}; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <span style="font-size:10px; font-weight:700; color:{{ color }}; letter-spacing:1px; text-transform:uppercase; background:{{ bg }}; padding:2px 8px; border-radius:4px; border:1px solid {{ border }};">{{ q }}</span>
+            <span style="font-size:10px; font-weight:700; color:#94A3B8; background:#F8FAFC; padding:2px 8px; border-radius:100px; border:1px solid #E2E8F0; letter-spacing:.3px; text-transform:uppercase;">Próximamente</span>
+        </div>
+        <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px; line-height:1.3;">{{ titulo }}</div>
+        <div style="font-size:11px; color:#64748B; line-height:1.55;">{{ desc }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+
+<!-- ── Sección 2: GPS & Trayectorias ── -->
+<div class="section-header" style="margin-bottom:14px;">
+    <div>
+        <div class="section-title">GPS y trayectorias</div>
+        <div class="section-sub">Q6 – Q8 · Análisis de movimiento y riesgo geográfico</div>
+    </div>
+    <span style="font-size:10px; background:#E0F2FE; color:#0369A1; font-weight:700; padding:4px 12px;
+                 border-radius:100px; letter-spacing:.5px; text-transform:uppercase; border:1px solid #BAE6FD;">
+        3 consultas
+    </span>
+</div>
+<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
+
+    {% set gps_reports = [
+        ('Q6', 'Ranking de riesgo — salidas de zona', 'Pacientes ordenados por número de salidas de zona. ORDER BY total_salidas_zona DESC.', '#0E7490', '#E0F2FE', '#BAE6FD'),
+        ('Q7', 'Distancia a zona segura', 'Distancia en metros entre la última posición GPS de cada paciente y su geocerca más cercana. ACOS protegido con LEAST/GREATEST.', '#0E7490', '#E0F2FE', '#BAE6FD'),
+        ('Q8', 'Trayectoria histórica de paciente', 'Secuencia cronológica de posiciones GPS para un paciente específico. Parámetro: id_paciente.', '#7C3AED', '#EDE9FE', '#DDD6FE')
+    ] %}
+
+    {% for q, titulo, desc, color, bg, border in gps_reports %}
+    <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:{{ color }}; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <span style="font-size:10px; font-weight:700; color:{{ color }}; letter-spacing:1px; text-transform:uppercase; background:{{ bg }}; padding:2px 8px; border-radius:4px; border:1px solid {{ border }};">{{ q }}</span>
+            <span style="font-size:10px; font-weight:700; color:#94A3B8; background:#F8FAFC; padding:2px 8px; border-radius:100px; border:1px solid #E2E8F0; letter-spacing:.3px; text-transform:uppercase;">Próximamente</span>
+        </div>
+        <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px; line-height:1.3;">{{ titulo }}</div>
+        <div style="font-size:11px; color:#64748B; line-height:1.55;">{{ desc }}</div>
+    </div>
+    {% endfor %}
+
+</div>
+
+
+<!-- ── Sección 3: Adherencia Terapéutica ── -->
+<div class="section-header" style="margin-bottom:14px;">
+    <div>
+        <div class="section-title">Adherencia terapéutica</div>
+        <div class="section-sub">Q9 – Q10 · NFC y cumplimiento de medicación</div>
+    </div>
+    <span style="font-size:10px; background:#EDE9FE; color:#5B21B6; font-weight:700; padding:4px 12px;
+                 border-radius:100px; letter-spacing:.5px; text-transform:uppercase; border:1px solid #DDD6FE;">
+        2 consultas
+    </span>
+</div>
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
+
+    <div style="background:#fff; border-radius:14px; border:1px solid #DDD6FE; padding:20px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:#7C3AED; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <span style="font-size:10px; font-weight:700; color:#7C3AED; letter-spacing:1px; text-transform:uppercase; background:#EDE9FE; padding:2px 8px; border-radius:4px; border:1px solid #DDD6FE;">Q9</span>
+            <span style="font-size:10px; font-weight:700; color:#065F46; background:#ECFDF5; padding:2px 8px; border-radius:100px; border:1px solid #A7F3D0; letter-spacing:.3px; text-transform:uppercase;">Activo en Recetas</span>
+        </div>
+        <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px;">Adherencia terapéutica por paciente</div>
+        <div style="font-size:11px; color:#64748B; line-height:1.55;">
+            Porcentaje de lecturas NFC exitosas por medicamento en los últimos 30 días. Ya se muestra en el módulo Recetas — la vista completa irá aquí.
+        </div>
+    </div>
+
+    <div style="background:#fff; border-radius:14px; border:1px solid #DDD6FE; padding:20px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:#7C3AED; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <span style="font-size:10px; font-weight:700; color:#7C3AED; letter-spacing:1px; text-transform:uppercase; background:#EDE9FE; padding:2px 8px; border-radius:4px; border:1px solid #DDD6FE;">Q10</span>
+            <span style="font-size:10px; font-weight:700; color:#94A3B8; background:#F8FAFC; padding:2px 8px; border-radius:100px; border:1px solid #E2E8F0; letter-spacing:.3px; text-transform:uppercase;">Próximamente</span>
+        </div>
+        <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px;">Dispositivos NFC activos por sede</div>
+        <div style="font-size:11px; color:#64748B; line-height:1.55;">
+            Total de pulseras NFC activas agrupadas por sede con conteo de usos reales (lecturas_nfc). JOIN con receta_nfc, recetas, pacientes.
+        </div>
+    </div>
+
+</div>
+
+
+<!-- ── Sección 4: Analítica & Tendencias ── -->
+<div class="section-header" style="margin-bottom:14px;">
+    <div>
+        <div class="section-title">Analítica y tendencias</div>
+        <div class="section-sub">Q13 – Q19 · Distribución, MTTA y SLA de alertas</div>
+    </div>
+    <span style="font-size:10px; background:#ECFDF5; color:#065F46; font-weight:700; padding:4px 12px;
+                 border-radius:100px; letter-spacing:.5px; text-transform:uppercase; border:1px solid #A7F3D0;">
+        7 consultas
+    </span>
+</div>
+<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:14px;">
+
+    {% set analytic_reports = [
+        ('Q13', 'Frecuencia de alertas por tipo', 'COUNT con porcentaje del total. Identifica el tipo de alerta más frecuente en el sistema.', '#059669', '#ECFDF5', '#A7F3D0'),
+        ('Q14', 'Tendencia diaria — últimos 30 días', 'Alertas agrupadas por día con desglose por tipo: Salida de Zona, Batería Baja, SOS, Caída.', '#059669', '#ECFDF5', '#A7F3D0'),
+        ('Q15', 'Tendencia semanal — 12 semanas', 'Alertas por semana con % de resolución. DATE_TRUNC(\'week\', fecha_hora).', '#059669', '#ECFDF5', '#A7F3D0'),
+        ('Q16', 'Distribución por tipo y sede', 'Tabla cruzada de tipos de alerta vs sedes. Muestra la última ocurrencia de cada combinación.', '#059669', '#ECFDF5', '#A7F3D0'),
+        ('Q17', 'MTTA — Tiempo Medio de Atención', 'Tiempo promedio en minutos entre la generación y la atención de alertas. Requiere campo fecha_atencion en alertas.', '#D97706', '#FFFBEB', '#FDE68A'),
+        ('Q18', 'SLA de alertas ≤ 30 min por sede', 'Porcentaje de alertas atendidas en menos de 30 minutos por sede. Requiere fecha_atencion.', '#D97706', '#FFFBEB', '#FDE68A'),
+        ('Q19', 'Comparativo multi-sede', 'Pacientes activos, alertas y kits asignados por sede. Incluye ratio alertas/paciente.', '#059669', '#ECFDF5', '#A7F3D0')
+    ] %}
+
+    {% for q, titulo, desc, color, bg, border in analytic_reports[:3] %}
+    <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:{{ color }}; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <span style="font-size:10px; font-weight:700; color:{{ color }}; letter-spacing:1px; text-transform:uppercase; background:{{ bg }}; padding:2px 8px; border-radius:4px; border:1px solid {{ border }};">{{ q }}</span>
+            <span style="font-size:10px; font-weight:700; color:#94A3B8; background:#F8FAFC; padding:2px 8px; border-radius:100px; border:1px solid #E2E8F0; letter-spacing:.3px; text-transform:uppercase;">Próximamente</span>
+        </div>
+        <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px; line-height:1.3;">{{ titulo }}</div>
+        <div style="font-size:11px; color:#64748B; line-height:1.55;">{{ desc }}</div>
+    </div>
+    {% endfor %}
+
+</div>
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:14px;">
+    {% for q, titulo, desc, color, bg, border in analytic_reports[3:5] %}
+    <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:{{ color }}; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <span style="font-size:10px; font-weight:700; color:{{ color }}; letter-spacing:1px; text-transform:uppercase; background:{{ bg }}; padding:2px 8px; border-radius:4px; border:1px solid {{ border }};">{{ q }}</span>
+            <span style="font-size:10px; font-weight:700; {% if q in ['Q17','Q18'] %}color:#D97706; background:#FFFBEB; border-color:#FDE68A{% else %}color:#94A3B8; background:#F8FAFC; border-color:#E2E8F0{% endif %}; padding:2px 8px; border-radius:100px; border:1px solid; letter-spacing:.3px; text-transform:uppercase;">
+                {% if q in ['Q17','Q18'] %}Requiere fecha_atencion{% else %}Próximamente{% endif %}
+            </span>
+        </div>
+        <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px; line-height:1.3;">{{ titulo }}</div>
+        <div style="font-size:11px; color:#64748B; line-height:1.55;">{{ desc }}</div>
+    </div>
+    {% endfor %}
+</div>
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
+    {% for q, titulo, desc, color, bg, border in analytic_reports[5:] %}
+    <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
+                box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:{{ color }}; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <span style="font-size:10px; font-weight:700; color:{{ color }}; letter-spacing:1px; text-transform:uppercase; background:{{ bg }}; padding:2px 8px; border-radius:4px; border:1px solid {{ border }};">{{ q }}</span>
+            <span style="font-size:10px; font-weight:700; {% if q in ['Q17','Q18'] %}color:#D97706; background:#FFFBEB; border-color:#FDE68A{% else %}color:#94A3B8; background:#F8FAFC; border-color:#E2E8F0{% endif %}; padding:2px 8px; border-radius:100px; border:1px solid; letter-spacing:.3px; text-transform:uppercase;">
+                {% if q in ['Q17','Q18'] %}Requiere fecha_atencion{% else %}Próximamente{% endif %}
+            </span>
+        </div>
+        <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px; line-height:1.3;">{{ titulo }}</div>
+        <div style="font-size:11px; color:#64748B; line-height:1.55;">{{ desc }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+
+<!-- ── Sección 5: Farmacia & Operaciones ── -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+
+    <div>
+        <div class="section-header" style="margin-bottom:14px;">
+            <div>
+                <div class="section-title">Farmacia e inventario</div>
+                <div class="section-sub">Q20 – Q21 · Stock y pedidos</div>
+            </div>
+            <span style="font-size:10px; background:#ECFDF5; color:#065F46; font-weight:700; padding:4px 12px;
+                         border-radius:100px; letter-spacing:.5px; text-transform:uppercase; border:1px solid #A7F3D0;">
+                2 consultas
+            </span>
+        </div>
+        {% for q, titulo, desc, color, bg, border in [
+            ('Q20', 'Stock crítico por sede', 'Medicamentos cuyo stock_actual < stock_minimo con unidades faltantes. Ya activo en Farmacia y Dashboard.', '#059669', '#ECFDF5', '#A7F3D0'),
+            ('Q21', 'Suministros pendientes', 'Pedidos pendientes con días restantes hasta la fecha de entrega prometida.', '#0E7490', '#E0F2FE', '#BAE6FD')
+        ] %}
+        <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px; margin-bottom:14px;
+                    box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+            <div style="position:absolute; top:0; left:0; right:0; height:3px; background:{{ color }}; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+                <span style="font-size:10px; font-weight:700; color:{{ color }}; letter-spacing:1px; text-transform:uppercase; background:{{ bg }}; padding:2px 8px; border-radius:4px; border:1px solid {{ border }};">{{ q }}</span>
+                {% if q == 'Q20' %}
+                <span style="font-size:10px; font-weight:700; color:#065F46; background:#ECFDF5; padding:2px 8px; border-radius:100px; border:1px solid #A7F3D0; letter-spacing:.3px; text-transform:uppercase;">Activo en Farmacia</span>
+                {% else %}
+                <span style="font-size:10px; font-weight:700; color:#94A3B8; background:#F8FAFC; padding:2px 8px; border-radius:100px; border:1px solid #E2E8F0; letter-spacing:.3px; text-transform:uppercase;">Próximamente</span>
+                {% endif %}
+            </div>
+            <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px;">{{ titulo }}</div>
+            <div style="font-size:11px; color:#64748B; line-height:1.55;">{{ desc }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div>
+        <div class="section-header" style="margin-bottom:14px;">
+            <div>
+                <div class="section-title">Operaciones diarias</div>
+                <div class="section-sub">Q22 – Q23 · Visitas y entregas externas</div>
+            </div>
+            <span style="font-size:10px; background:#F8FAFC; color:#475569; font-weight:700; padding:4px 12px;
+                         border-radius:100px; letter-spacing:.5px; text-transform:uppercase; border:1px solid #E2E8F0;">
+                2 consultas
+            </span>
+        </div>
+        {% for q, titulo, desc, color, bg, border in [
+            ('Q22', 'Visitas del día con estado', 'Todas las visitas de hoy con hora de entrada, hora de salida y relación del visitante. Activo en módulo Visitas.', '#0E7490', '#E0F2FE', '#BAE6FD'),
+            ('Q23', 'Entregas externas pendientes', 'Paquetes y entregas recibidas para pacientes que aún están pendientes de revisión por el personal.', '#64748B', '#F8FAFC', '#E2E8F0')
+        ] %}
+        <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px; margin-bottom:14px;
+                    box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
+            <div style="position:absolute; top:0; left:0; right:0; height:3px; background:{{ color }}; opacity:0.7; border-radius:14px 14px 0 0;"></div>
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;">
+                <span style="font-size:10px; font-weight:700; color:{{ color }}; letter-spacing:1px; text-transform:uppercase; background:{{ bg }}; padding:2px 8px; border-radius:4px; border:1px solid {{ border }};">{{ q }}</span>
+                {% if q == 'Q22' %}
+                <span style="font-size:10px; font-weight:700; color:#065F46; background:#ECFDF5; padding:2px 8px; border-radius:100px; border:1px solid #A7F3D0; letter-spacing:.3px; text-transform:uppercase;">Activo en Visitas</span>
+                {% else %}
+                <span style="font-size:10px; font-weight:700; color:#94A3B8; background:#F8FAFC; padding:2px 8px; border-radius:100px; border:1px solid #E2E8F0; letter-spacing:.3px; text-transform:uppercase;">Próximamente</span>
+                {% endif %}
+            </div>
+            <div style="font-size:13px; font-weight:700; color:#0F172A; margin-bottom:6px;">{{ titulo }}</div>
+            <div style="font-size:11px; color:#64748B; line-height:1.55;">{{ desc }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+{% endblock %}

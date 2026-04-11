@@ -1315,6 +1315,130 @@ def visitas_nueva():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# RECETAS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/recetas")
+@admin_requerido
+def recetas_lista():
+    recetas = db.query("""
+        SELECT
+            r.id_receta,
+            TO_CHAR(r.fecha, 'DD/MM/YYYY') AS fecha,
+            p.id_paciente,
+            p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS nombre_paciente,
+            COALESCE(s.nombre_sede, '—') AS nombre_sede,
+            COUNT(DISTINCT rm.id_detalle)  AS n_medicamentos,
+            d.id_serial                    AS serial_nfc,
+            TO_CHAR(rn.fecha_inicio_gestion, 'DD/MM/YYYY') AS nfc_desde,
+            COUNT(ln.id_lectura_nfc)
+                FILTER (WHERE ln.fecha_hora::date = CURRENT_DATE)               AS lecturas_hoy,
+            COUNT(ln.id_lectura_nfc)
+                FILTER (WHERE ln.fecha_hora::date = CURRENT_DATE
+                          AND ln.resultado = 'Exitosa')                          AS exitosas_hoy
+        FROM recetas r
+        JOIN pacientes p
+            ON p.id_paciente = r.id_paciente
+        LEFT JOIN sede_pacientes sp
+            ON sp.id_paciente = p.id_paciente AND sp.fecha_salida IS NULL
+        LEFT JOIN sedes s
+            ON s.id_sede = sp.id_sede
+        LEFT JOIN receta_medicamentos rm
+            ON rm.id_receta = r.id_receta
+        LEFT JOIN receta_nfc rn
+            ON rn.id_receta = r.id_receta AND rn.fecha_fin_gestion IS NULL
+        LEFT JOIN dispositivos d
+            ON d.id_dispositivo = rn.id_dispositivo
+        LEFT JOIN lecturas_nfc ln
+            ON ln.id_receta = r.id_receta
+        WHERE p.id_estado != 3
+        GROUP BY r.id_receta, r.fecha, p.id_paciente, p.nombre, p.apellido_p,
+                 p.apellido_m, s.nombre_sede, d.id_serial, rn.fecha_inicio_gestion
+        ORDER BY r.fecha DESC
+    """)
+    return render_template("recetas.html", recetas=recetas)
+
+
+@app.route("/recetas/<int:id>")
+@admin_requerido
+def recetas_detalle(id):
+    receta = db.one("""
+        SELECT r.id_receta, TO_CHAR(r.fecha, 'DD/MM/YYYY') AS fecha,
+               p.id_paciente,
+               p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS nombre_paciente,
+               COALESCE(s.nombre_sede, '—') AS nombre_sede
+        FROM recetas r
+        JOIN pacientes p ON p.id_paciente = r.id_paciente
+        LEFT JOIN sede_pacientes sp ON sp.id_paciente = p.id_paciente AND sp.fecha_salida IS NULL
+        LEFT JOIN sedes s ON s.id_sede = sp.id_sede
+        WHERE r.id_receta = %s
+    """, (id,))
+    if not receta:
+        abort(404)
+
+    medicamentos = db.query("""
+        SELECT rm.id_detalle, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas,
+               COUNT(ln.id_lectura_nfc)                                     AS total_lecturas,
+               COUNT(ln.id_lectura_nfc) FILTER (WHERE ln.resultado='Exitosa') AS exitosas,
+               COUNT(ln.id_lectura_nfc)
+                   FILTER (WHERE ln.resultado='Exitosa'
+                             AND ln.fecha_hora >= CURRENT_DATE - INTERVAL '30 days') AS exitosas_30d
+        FROM receta_medicamentos rm
+        JOIN medicamentos m ON m.gtin = rm.gtin
+        LEFT JOIN receta_nfc rn ON rn.id_receta = rm.id_receta AND rn.fecha_fin_gestion IS NULL
+        LEFT JOIN lecturas_nfc ln
+            ON ln.id_receta = rm.id_receta
+           AND ln.id_dispositivo = rn.id_dispositivo
+        WHERE rm.id_receta = %s
+        GROUP BY rm.id_detalle, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas
+        ORDER BY m.nombre_medicamento
+    """, (id,))
+
+    nfc = db.one("""
+        SELECT rn.id_receta, rn.id_dispositivo, d.id_serial,
+               TO_CHAR(rn.fecha_inicio_gestion, 'DD/MM/YYYY') AS desde,
+               rn.fecha_fin_gestion
+        FROM receta_nfc rn
+        JOIN dispositivos d ON d.id_dispositivo = rn.id_dispositivo
+        WHERE rn.id_receta = %s AND rn.fecha_fin_gestion IS NULL
+    """, (id,))
+
+    lecturas = db.query("""
+        SELECT ln.id_lectura_nfc,
+               TO_CHAR(ln.fecha_hora, 'DD/MM/YYYY HH24:MI') AS fecha_hora,
+               ln.tipo_lectura, ln.resultado
+        FROM lecturas_nfc ln
+        WHERE ln.id_receta = %s
+        ORDER BY ln.fecha_hora DESC
+        LIMIT 20
+    """, (id,))
+
+    return render_template("recetas_detalle.html",
+                           receta=receta,
+                           medicamentos=medicamentos,
+                           nfc=nfc,
+                           lecturas=lecturas)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# REPORTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/reportes")
+@admin_requerido
+def reportes():
+    # Quick live counters for the header
+    stats = {
+        "alertas_activas": db.scalar("SELECT COUNT(*) FROM alertas WHERE estatus='Activa'") or 0,
+        "lecturas_nfc_hoy": db.scalar(
+            "SELECT COUNT(*) FROM lecturas_nfc WHERE fecha_hora::date = CURRENT_DATE") or 0,
+        "pacientes_activos": db.scalar(
+            "SELECT COUNT(*) FROM pacientes WHERE id_estado != 3") or 0,
+    }
+    return render_template("reportes.html", stats=stats)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # PORTAL CLÍNICO  (médico)
 # ═══════════════════════════════════════════════════════════════════════════════
 

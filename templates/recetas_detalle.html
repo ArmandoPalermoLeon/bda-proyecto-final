@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Receta #{{ receta.id_receta }}{% endblock %}
+{% block page_title %}Receta #{{ receta.id_receta }}{% endblock %}
+{% block breadcrumb %}Inicio / Recetas / #{{ receta.id_receta }}{% endblock %}
+
+{% block content %}
+
+<a href="{{ url_for('recetas_lista') }}" class="btn btn-secondary btn-sm" style="margin-bottom:20px; display:inline-flex;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+        <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Volver a recetas
+</a>
+
+<!-- Encabezado -->
+<div class="card" style="margin-bottom:18px;">
+    <div style="padding:20px 24px; display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div>
+            <div style="font-size:11px; font-weight:700; color:#94A3B8; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Paciente</div>
+            <div style="font-size:20px; font-weight:800; color:#0F172A; letter-spacing:-0.3px;">{{ receta.nombre_paciente }}</div>
+            <div style="margin-top:6px; display:flex; align-items:center; gap:10px;">
+                <span class="badge" style="background:#E0F2FE; color:#0369A1;">{{ receta.nombre_sede }}</span>
+                <span style="font-size:12px; color:#94A3B8;">Emitida el {{ receta.fecha }}</span>
+            </div>
+        </div>
+        {% if nfc %}
+        <div style="text-align:right;">
+            <div style="font-size:11px; font-weight:700; color:#94A3B8; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Pulsera NFC</div>
+            <span class="badge" style="background:#EDE9FE; color:#5B21B6; font-size:13px; padding:5px 14px;">{{ nfc.id_serial }}</span>
+            <div style="font-size:11px; color:#94A3B8; margin-top:4px;">Activa desde {{ nfc.desde }}</div>
+        </div>
+        {% else %}
+        <div style="text-align:right;">
+            <div style="font-size:11px; font-weight:700; color:#94A3B8; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Pulsera NFC</div>
+            <span style="font-size:13px; color:#CBD5E1;">Sin dispositivo asignado</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+
+    <!-- Medicamentos -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Medicamentos prescritos</div>
+                <div style="font-size:11px; color:#94A3B8; margin-top:2px;">{{ medicamentos | length }} ítem(s)</div>
+            </div>
+        </div>
+        {% if medicamentos %}
+        <div style="padding:0;">
+            {% for m in medicamentos %}
+            <div style="padding:16px 20px; border-bottom:1px solid #F8FAFC; {% if loop.last %}border-bottom:none;{% endif %}">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+                    <div style="flex:1;">
+                        <div style="font-size:13px; font-weight:700; color:#0F172A;">{{ m.nombre_medicamento }}</div>
+                        <div style="margin-top:4px; display:flex; gap:10px; flex-wrap:wrap;">
+                            <span style="font-size:11px; background:#F0F9FF; color:#0369A1; font-weight:600;
+                                         padding:2px 9px; border-radius:6px; border:1px solid #BAE6FD;">
+                                {{ m.dosis }}
+                            </span>
+                            <span style="font-size:11px; color:#64748B;">
+                                Cada {{ m.frecuencia_horas }}h
+                            </span>
+                        </div>
+                    </div>
+                    <div style="text-align:right; flex-shrink:0;">
+                        <div style="font-size:10px; color:#94A3B8; text-transform:uppercase; letter-spacing:.6px; margin-bottom:3px;">Adherencia 30d</div>
+                        {% if m.total_lecturas > 0 %}
+                        <div style="font-size:16px; font-weight:800;
+                                    color:{% if (m.exitosas_30d / m.total_lecturas) >= 0.8 %}#059669{% elif (m.exitosas_30d / m.total_lecturas) >= 0.5 %}#D97706{% else %}#E11D48{% endif %};">
+                            {{ ((m.exitosas_30d / m.total_lecturas) * 100)|int }}%
+                        </div>
+                        <div style="font-size:10px; color:#94A3B8;">{{ m.exitosas_30d }}/{{ m.total_lecturas }} ok</div>
+                        {% else %}
+                        <div style="font-size:12px; color:#CBD5E1;">Sin datos</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align:center; padding:32px; color:#94A3B8; font-size:13px;">
+            No hay medicamentos en esta receta.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Historial de lecturas NFC -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Historial de lecturas NFC</div>
+                <div style="font-size:11px; color:#94A3B8; margin-top:2px;">Últimas 20 administraciones</div>
+            </div>
+        </div>
+        {% if lecturas %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha / Hora</th>
+                        <th>Tipo</th>
+                        <th>Resultado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in lecturas %}
+                    <tr>
+                        <td style="font-size:12px; color:#64748B; font-variant-numeric:tabular-nums;">{{ l.fecha_hora }}</td>
+                        <td style="font-size:12px;">{{ l.tipo_lectura }}</td>
+                        <td>
+                            {% if l.resultado == 'Exitosa' %}
+                            <span class="badge" style="background:#ECFDF5; color:#065F46;">Exitosa</span>
+                            {% else %}
+                            <span class="badge" style="background:#FFF1F2; color:#9F1239;">{{ l.resultado }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align:center; padding:40px; color:#94A3B8; font-size:13px;">
+            {% if nfc %}
+            No hay lecturas NFC registradas para esta receta.
+            {% else %}
+            Asigna un dispositivo NFC para registrar adherencia.
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}
