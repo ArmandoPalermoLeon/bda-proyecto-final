@@ -581,7 +581,7 @@
                 <div class="cl-stat blue">
                     <div class="cl-stat-label">Personal en turno</div>
                     <div class="cl-stat-value">{{ staff_en_turno }}</div>
-                    <div class="cl-stat-sub">de {{ turnos | length }} programados hoy</div>
+                    <div class="cl-stat-sub">cuidadores activos ahora</div>
                 </div>
                 <div class="cl-stat green">
                     <div class="cl-stat-label">Pacientes en censo</div>
@@ -670,42 +670,44 @@
         <!-- ══ TAB 2: Turnos y Asignaciones ════════════════════ -->
         <div class="cl-panel" id="tab-turnos">
 
-            <div class="cl-section-title">Turnos y Asignaciones</div>
-            <div class="cl-section-sub">Personal programado para hoy y pacientes bajo su responsabilidad</div>
+            <div class="cl-section-title">Cobertura de zonas</div>
+            <div class="cl-section-sub">Cuidadores actualmente en turno por zona</div>
 
-            <!-- Shift table -->
+            <!-- Zone coverage table -->
             <div class="cl-card cl-gap">
-                <div class="cl-card-header">Cuadro de turnos del día</div>
+                <div class="cl-card-header">Zonas con cobertura activa ahora mismo</div>
                 <div class="cl-card-body">
                     <div class="cl-table-wrap">
                         <table class="cl-table">
                             <thead>
                                 <tr>
-                                    <th>Nombre</th>
-                                    <th>Rol</th>
-                                    <th>Turno</th>
-                                    <th>Entrada</th>
-                                    <th>Salida</th>
-                                    <th>Pacientes</th>
+                                    <th>Zona</th>
+                                    <th>Cuidador en turno</th>
+                                    <th>Horario</th>
                                     <th>Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for t in turnos %}
-                                <tr>
-                                    <td style="font-weight:600;">{{ t.nombre }}</td>
-                                    <td><span class="bd bd-blue">{{ t.rol }}</span></td>
-                                    <td>{{ t.turno }}</td>
-                                    <td style="font-weight:600; color:#185fa5;">{{ t.hora_entrada }}</td>
-                                    <td style="color:#64748b;">{{ t.hora_salida }}</td>
-                                    <td style="font-size:12px; color:#475569;">{{ t.pacientes_asignados }}</td>
-                                    <td>
-                                        <span class="bd {% if t.estado == 'En turno' %}bd-green{% else %}bd-gray{% endif %}">
-                                            {{ t.estado }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                                {% if cobertura_zonas %}
+                                    {% for z in cobertura_zonas %}
+                                    <tr>
+                                        <td style="font-weight:600;">{{ z.nombre_zona }}</td>
+                                        <td>{{ z.nombre_cuidador }}</td>
+                                        <td style="font-variant-numeric:tabular-nums; color:#0E7490; font-weight:600;">
+                                            {{ z.hora_inicio|string|truncate(5, True, '') }} – {{ z.hora_fin|string|truncate(5, True, '') }}
+                                        </td>
+                                        <td>
+                                            <span class="bd bd-green">En turno</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" style="text-align:center; color:#94a3b8; padding:20px;">
+                                            No hay cuidadores en turno en este momento.
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>

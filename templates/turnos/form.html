@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}{% if turno %}Editar turno{% else %}Nuevo turno{% endif %}{% endblock %}
+{% block page_title %}{% if turno %}Editar turno{% else %}Nuevo turno{% endif %}{% endblock %}
+{% block breadcrumb %}Inicio / <a href="{{ url_for('turnos_lista') }}">Turnos</a> / {% if turno %}Editar{% else %}Nuevo{% endif %}{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+    <div>
+        <div class="section-title">{% if turno %}Editar turno #{{ turno.id_turno }}{% else %}Registrar turno{% endif %}</div>
+        <div class="section-sub">Asigna un cuidador a una zona en un horario semanal recurrente</div>
+    </div>
+</div>
+
+<div class="card" style="max-width:680px;">
+    <div class="card-body" style="padding:28px 32px;">
+        <form method="POST">
+
+            {% if not turno %}
+            <div class="form-group">
+                <label class="form-label">ID de turno <span style="color:#e11d48;">*</span></label>
+                <input type="number" name="id_turno" class="form-control" required min="1"
+                       placeholder="Número entero único">
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label class="form-label">Zona <span style="color:#e11d48;">*</span></label>
+                <select name="id_zona" class="form-control" required>
+                    <option value="">— Selecciona zona —</option>
+                    {% for z in zonas %}
+                    <option value="{{ z.id_zona }}"
+                        {% if turno and turno.id_zona == z.id_zona %}selected{% endif %}>
+                        {{ z.nombre_zona }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Cuidador <span style="color:#e11d48;">*</span></label>
+                <select name="id_cuidador" class="form-control" required>
+                    <option value="">— Selecciona cuidador —</option>
+                    {% for c in cuidadores %}
+                    <option value="{{ c.id_cuidador }}"
+                        {% if turno and turno.id_cuidador == c.id_cuidador %}selected{% endif %}>
+                        {{ c.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Hora inicio <span style="color:#e11d48;">*</span></label>
+                    <input type="time" name="hora_inicio" class="form-control" required
+                           value="{{ turno.hora_inicio|string|truncate(5, True, '') if turno else '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hora fin <span style="color:#e11d48;">*</span></label>
+                    <input type="time" name="hora_fin" class="form-control" required
+                           value="{{ turno.hora_fin|string|truncate(5, True, '') if turno else '' }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Días activos <span style="color:#e11d48;">*</span></label>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                    {% for dia, label in [
+                        ('lunes','Lun'),('martes','Mar'),('miercoles','Mié'),
+                        ('jueves','Jue'),('viernes','Vie'),('sabado','Sáb'),('domingo','Dom')
+                    ] %}
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;
+                                  font-size:13px; font-weight:500; color:#334155;">
+                        <input type="checkbox" name="{{ dia }}"
+                               {% if turno and turno[dia] %}checked{% endif %}
+                               style="width:15px; height:15px; accent-color:#0E7490;">
+                        {{ label }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if turno %}
+            <div class="form-group">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;
+                               font-size:13px; font-weight:500; color:#334155;">
+                    <input type="checkbox" name="activo"
+                           {% if turno.activo %}checked{% endif %}
+                           style="width:15px; height:15px; accent-color:#0E7490;">
+                    Turno activo
+                </label>
+            </div>
+            {% endif %}
+
+            <div style="display:flex; gap:12px; margin-top:24px;">
+                <button type="submit" class="btn btn-primary">
+                    {% if turno %}Guardar cambios{% else %}Registrar turno{% endif %}
+                </button>
+                <a href="{{ url_for('turnos_lista') }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

@@ -519,6 +519,132 @@ def cuidadores_eliminar(id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# TURNOS DE CUIDADORES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/turnos")
+@admin_requerido
+def turnos_lista():
+    turnos = db.query("""
+        SELECT tc.id_turno, tc.hora_inicio, tc.hora_fin, tc.activo,
+               tc.lunes, tc.martes, tc.miercoles, tc.jueves,
+               tc.viernes, tc.sabado, tc.domingo,
+               z.nombre_zona, tc.id_zona,
+               e.nombre || ' ' || e.apellido_p AS nombre_cuidador,
+               tc.id_cuidador
+        FROM turno_cuidador tc
+        JOIN zonas z      ON tc.id_zona     = z.id_zona
+        JOIN cuidadores c ON tc.id_cuidador = c.id_empleado
+        JOIN empleados e  ON c.id_empleado  = e.id_empleado
+        ORDER BY z.nombre_zona, tc.hora_inicio
+    """)
+    return render_template("turnos/list.html", turnos=turnos)
+
+
+@app.route("/turnos/nuevo", methods=["GET", "POST"])
+@admin_requerido
+def turnos_nuevo():
+    if request.method == "POST":
+        try:
+            id_turno    = int(request.form["id_turno"])
+            id_cuidador = int(request.form["id_cuidador"])
+            id_zona     = int(request.form["id_zona"])
+            hora_inicio = request.form["hora_inicio"]
+            hora_fin    = request.form["hora_fin"]
+            dias = {d: d in request.form
+                    for d in ("lunes","martes","miercoles","jueves",
+                              "viernes","sabado","domingo")}
+
+            db.execute("""
+                INSERT INTO turno_cuidador
+                    (id_turno, id_cuidador, id_zona, hora_inicio, hora_fin,
+                     lunes, martes, miercoles, jueves, viernes, sabado, domingo, activo)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE)
+            """, (id_turno, id_cuidador, id_zona, hora_inicio, hora_fin,
+                  dias["lunes"], dias["martes"], dias["miercoles"], dias["jueves"],
+                  dias["viernes"], dias["sabado"], dias["domingo"]))
+
+            flash("Turno registrado correctamente.", "success")
+            return redirect(url_for("turnos_lista"))
+        except Exception as e:
+            flash(f"Error al registrar turno: {e}", "error")
+
+    cuidadores = db.query("""
+        SELECT c.id_empleado AS id_cuidador,
+               e.nombre || ' ' || e.apellido_p AS nombre
+        FROM cuidadores c JOIN empleados e ON c.id_empleado = e.id_empleado
+        ORDER BY e.nombre
+    """)
+    zonas_list = db.query("SELECT id_zona, nombre_zona FROM zonas ORDER BY nombre_zona")
+    return render_template("turnos/form.html", turno=None,
+                           cuidadores=cuidadores, zonas=zonas_list)
+
+
+@app.route("/turnos/editar/<int:id>", methods=["GET", "POST"])
+@admin_requerido
+def turnos_editar(id):
+    turno = db.one("""
+        SELECT tc.*, z.nombre_zona,
+               e.nombre || ' ' || e.apellido_p AS nombre_cuidador
+        FROM turno_cuidador tc
+        JOIN zonas z      ON tc.id_zona     = z.id_zona
+        JOIN cuidadores c ON tc.id_cuidador = c.id_empleado
+        JOIN empleados e  ON c.id_empleado  = e.id_empleado
+        WHERE tc.id_turno = %s
+    """, (id,))
+    if not turno:
+        flash("Turno no encontrado.", "error")
+        return redirect(url_for("turnos_lista"))
+
+    if request.method == "POST":
+        try:
+            id_cuidador = int(request.form["id_cuidador"])
+            id_zona     = int(request.form["id_zona"])
+            hora_inicio = request.form["hora_inicio"]
+            hora_fin    = request.form["hora_fin"]
+            activo      = "activo" in request.form
+            dias = {d: d in request.form
+                    for d in ("lunes","martes","miercoles","jueves",
+                              "viernes","sabado","domingo")}
+
+            db.execute("""
+                UPDATE turno_cuidador
+                SET id_cuidador = %s, id_zona = %s, hora_inicio = %s, hora_fin = %s,
+                    lunes = %s, martes = %s, miercoles = %s, jueves = %s,
+                    viernes = %s, sabado = %s, domingo = %s, activo = %s
+                WHERE id_turno = %s
+            """, (id_cuidador, id_zona, hora_inicio, hora_fin,
+                  dias["lunes"], dias["martes"], dias["miercoles"], dias["jueves"],
+                  dias["viernes"], dias["sabado"], dias["domingo"], activo, id))
+
+            flash("Turno actualizado correctamente.", "success")
+            return redirect(url_for("turnos_lista"))
+        except Exception as e:
+            flash(f"Error al actualizar turno: {e}", "error")
+
+    cuidadores = db.query("""
+        SELECT c.id_empleado AS id_cuidador,
+               e.nombre || ' ' || e.apellido_p AS nombre
+        FROM cuidadores c JOIN empleados e ON c.id_empleado = e.id_empleado
+        ORDER BY e.nombre
+    """)
+    zonas_list = db.query("SELECT id_zona, nombre_zona FROM zonas ORDER BY nombre_zona")
+    return render_template("turnos/form.html", turno=turno,
+                           cuidadores=cuidadores, zonas=zonas_list)
+
+
+@app.route("/turnos/eliminar/<int:id>", methods=["POST"])
+@admin_requerido
+def turnos_eliminar(id):
+    try:
+        db.execute("DELETE FROM turno_cuidador WHERE id_turno = %s", (id,))
+        flash("Turno eliminado correctamente.", "success")
+    except Exception as e:
+        flash(f"Error al eliminar turno: {e}", "error")
+    return redirect(url_for("turnos_lista"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ALERTAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -527,13 +653,20 @@ def cuidadores_eliminar(id):
 def alertas():
     alertas_list = db.query("""
         SELECT a.id_alerta, a.tipo_alerta, a.estatus, a.fecha_hora,
-               p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS paciente,
-               s.nombre_sede AS nombre_sucursal
+               COALESCE(
+                   p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m,
+                   '— Zona: ' || z.nombre_zona,
+                   '—'
+               ) AS paciente,
+               COALESCE(s.nombre_sede, sz.nombre_sede, '—') AS nombre_sucursal
         FROM alertas a
-        JOIN pacientes p ON a.id_paciente = p.id_paciente
+        LEFT JOIN pacientes p       ON a.id_paciente = p.id_paciente
+        LEFT JOIN zonas z           ON a.id_zona = z.id_zona
         LEFT JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
                                    AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s ON sp.id_sede = s.id_sede
+        LEFT JOIN sedes s           ON sp.id_sede = s.id_sede
+        LEFT JOIN sede_zonas szr    ON a.id_zona = szr.id_zona
+        LEFT JOIN sedes sz          ON szr.id_sede = sz.id_sede
         ORDER BY a.fecha_hora DESC
     """)
     return render_template("alertas.html", alertas=alertas_list)
@@ -1137,7 +1270,20 @@ def dashboard_clinica(id_sucursal):
         WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND a.estatus = 'Activa'
     """, (id_sucursal,)) or 0
 
-    staff_en_turno    = sum(1 for t in data.TURNOS_HOY if t["estado"] == "En turno")
+    from datetime import datetime as _dt
+    _now = _dt.now()
+    _dow = _now.weekday()  # 0=lunes … 6=domingo
+    _dia_col = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"][_dow]
+    staff_en_turno = db.scalar(f"""
+        SELECT COUNT(DISTINCT tc.id_cuidador)
+        FROM turno_cuidador tc
+        JOIN sede_zonas sz ON tc.id_zona = sz.id_zona
+        WHERE tc.activo = TRUE
+          AND tc.hora_inicio <= CURRENT_TIME
+          AND tc.hora_fin    >  CURRENT_TIME
+          AND tc.{_dia_col} = TRUE
+          AND sz.id_sede = %s
+    """, (id_sucursal,)) or 0
     tareas_pendientes = sum(1 for t in data.TAREAS_HOY if t["estado"] == "Pendiente")
 
     ids_sede = {p["id_paciente"] for p in pacientes_sede}
@@ -1161,6 +1307,24 @@ def dashboard_clinica(id_sucursal):
 
     incidentes_sede = [i for i in data.INCIDENTES if i["id_paciente"] in ids_sede]
     comedor_hoy     = [b for b in data.BITACORA_COMEDOR if b["id_sede"] == id_sucursal]
+
+    # Cobertura de zonas por turno activo ahora mismo en esta sede
+    cobertura_zonas = db.query(f"""
+        SELECT z.id_zona, z.nombre_zona,
+               e.nombre || ' ' || e.apellido_p AS nombre_cuidador,
+               tc.hora_inicio, tc.hora_fin
+        FROM turno_cuidador tc
+        JOIN zonas z      ON tc.id_zona     = z.id_zona
+        JOIN sede_zonas sz ON z.id_zona     = sz.id_zona
+        JOIN cuidadores c ON tc.id_cuidador = c.id_empleado
+        JOIN empleados e  ON c.id_empleado  = e.id_empleado
+        WHERE tc.activo = TRUE
+          AND tc.hora_inicio <= CURRENT_TIME
+          AND tc.hora_fin    >  CURRENT_TIME
+          AND tc.{_dia_col}  = TRUE
+          AND sz.id_sede = %s
+        ORDER BY z.nombre_zona, e.nombre
+    """, (id_sucursal,))
 
     visitas_hoy = db.query("""
         SELECT v.*, vt.nombre || ' ' || vt.apellido_p AS visitante
@@ -1186,7 +1350,7 @@ def dashboard_clinica(id_sucursal):
         alertas_activas=alertas_activas_count,
         tareas=data.TAREAS_HOY,
         alertas_medicas=data.ALERTAS_MEDICAS,
-        turnos=data.TURNOS_HOY,
+        cobertura_zonas=cobertura_zonas,
         asignaciones=data.ASIGNACIONES_CUIDADORES,
         pacientes=pacientes_sede,
         expedientes=expedientes,

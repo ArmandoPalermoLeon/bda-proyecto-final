@@ -9,6 +9,8 @@
 --   2. Catálogos normalizados para tipos y estados (reemplazan CHECK literales)
 --   3. ALERTA_EVENTO_ORIGEN — trazabilidad de fuente que disparó la alerta
 --   4. LECTURAS_NFC — tabla separada de DETECCIONES_BEACON (corrección semántica)
+--   5. TURNO_CUIDADOR — turnos semanales por zona; BEACON_ZONA — beacon→zona
+--   6. Trigger fn_verificar_cobertura_zona — alerta automática zona sin cobertura
 -- =============================================================================
 
 
@@ -37,6 +39,8 @@ DROP TABLE IF EXISTS recetas                CASCADE;
 DROP TABLE IF EXISTS detecciones_beacon     CASCADE;
 DROP TABLE IF EXISTS lecturas_gps           CASCADE;
 DROP TABLE IF EXISTS asignacion_kit         CASCADE;
+DROP TABLE IF EXISTS turno_cuidador         CASCADE;
+DROP TABLE IF EXISTS beacon_zona            CASCADE;
 DROP TABLE IF EXISTS zona_beacons           CASCADE;
 DROP TABLE IF EXISTS gateways               CASCADE;
 DROP TABLE IF EXISTS zonas                  CASCADE;
@@ -59,6 +63,9 @@ DROP TABLE IF EXISTS cat_estado_alerta      CASCADE;
 DROP TABLE IF EXISTS cat_estado_suministro  CASCADE;
 DROP TABLE IF EXISTS cat_estado_entrega     CASCADE;
 DROP TABLE IF EXISTS cat_turno_comedor      CASCADE;
+
+DROP TRIGGER IF EXISTS trg_cobertura_zona ON detecciones_beacon;
+DROP FUNCTION IF EXISTS fn_verificar_cobertura_zona();
 
 
 -- =============================================================================
@@ -255,6 +262,42 @@ CREATE TABLE zonas (
 -- Los beacons están fijos en el edificio; el teléfono del cuidador (Chrome/Web Bluetooth)
 -- actúa como receptor móvil durante las rondas. No hay asignación per-paciente.
 
+-- NUEVO: vincula cada beacon fijo a la zona donde está instalado
+CREATE TABLE beacon_zona (
+    id_dispositivo  INTEGER  PRIMARY KEY,
+    id_zona         INTEGER  NOT NULL,
+    CONSTRAINT fk_bz_dispositivo
+        FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_bz_zona
+        FOREIGN KEY (id_zona)        REFERENCES zonas         (id_zona)
+        ON DELETE RESTRICT
+);
+
+-- NUEVO: turnos semanales recurrentes — qué cuidador cubre qué zona y en qué horario
+CREATE TABLE turno_cuidador (
+    id_turno    INTEGER  PRIMARY KEY,
+    id_cuidador INTEGER  NOT NULL,
+    id_zona     INTEGER  NOT NULL,
+    hora_inicio TIME     NOT NULL,
+    hora_fin    TIME     NOT NULL,
+    lunes       BOOLEAN  NOT NULL DEFAULT FALSE,
+    martes      BOOLEAN  NOT NULL DEFAULT FALSE,
+    miercoles   BOOLEAN  NOT NULL DEFAULT FALSE,
+    jueves      BOOLEAN  NOT NULL DEFAULT FALSE,
+    viernes     BOOLEAN  NOT NULL DEFAULT FALSE,
+    sabado      BOOLEAN  NOT NULL DEFAULT FALSE,
+    domingo     BOOLEAN  NOT NULL DEFAULT FALSE,
+    activo      BOOLEAN  NOT NULL DEFAULT TRUE,
+    CONSTRAINT fk_tc_cuidador
+        FOREIGN KEY (id_cuidador) REFERENCES cuidadores (id_empleado)
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_tc_zona
+        FOREIGN KEY (id_zona)     REFERENCES zonas      (id_zona)
+        ON DELETE RESTRICT,
+    CONSTRAINT chk_tc_horas CHECK (hora_fin > hora_inicio)
+);
+
 CREATE TABLE asignacion_kit (
     id_monitoreo       INTEGER  PRIMARY KEY,
     id_paciente        INTEGER  NOT NULL,
@@ -291,15 +334,19 @@ CREATE TABLE lecturas_gps (
 );
 
 -- detecciones_beacon: registra qué beacons detectó el teléfono del cuidador durante rondas.
--- Ya no referencia gateways (eliminados). El caregiver_id viene del endpoint Web Bluetooth.
+-- Ya no referencia gateways (eliminados). id_cuidador identifica quién realizó la ronda.
 CREATE TABLE detecciones_beacon (
     id_deteccion   INTEGER    PRIMARY KEY,
     id_dispositivo INTEGER    NOT NULL,
+    id_cuidador    INTEGER,              -- cuidador que realizó la ronda (NULL si anónimo)
     fecha_hora     TIMESTAMP  NOT NULL,
     rssi           INTEGER    NOT NULL,
     CONSTRAINT fk_db_dispositivo
         FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
         ON DELETE RESTRICT,
+    CONSTRAINT fk_db_cuidador
+        FOREIGN KEY (id_cuidador)    REFERENCES cuidadores   (id_empleado)
+        ON DELETE SET NULL,
     CONSTRAINT uq_db_instante UNIQUE (id_dispositivo, fecha_hora)
 );
 
@@ -325,20 +372,23 @@ CREATE TABLE lecturas_nfc (
 
 CREATE TABLE alertas (
     id_alerta   INTEGER      PRIMARY KEY,
-    id_paciente INTEGER      NOT NULL,
+    id_paciente INTEGER,                  -- NULL para alertas de zona (sin paciente específico)
+    id_zona     INTEGER,                  -- NULL para alertas de paciente; poblado por trigger
     tipo_alerta VARCHAR(30)  NOT NULL,
     fecha_hora  TIMESTAMP    NOT NULL,
     estatus     VARCHAR(20)  NOT NULL DEFAULT 'Activa',
     CONSTRAINT fk_alerta_paciente
         FOREIGN KEY (id_paciente)  REFERENCES pacientes         (id_paciente)
         ON DELETE RESTRICT,
+    CONSTRAINT fk_alerta_zona
+        FOREIGN KEY (id_zona)      REFERENCES zonas             (id_zona)
+        ON DELETE RESTRICT,
     CONSTRAINT fk_alerta_tipo
         FOREIGN KEY (tipo_alerta)  REFERENCES cat_tipo_alerta   (tipo_alerta)
         ON UPDATE CASCADE,
     CONSTRAINT fk_alerta_estatus
         FOREIGN KEY (estatus)      REFERENCES cat_estado_alerta  (estatus)
-        ON UPDATE CASCADE,
-    CONSTRAINT uq_alerta_unica UNIQUE (id_paciente, tipo_alerta, fecha_hora)
+        ON UPDATE CASCADE
 );
 
 -- NUEVO: vincula cada alerta con el evento IoT que la originó
@@ -632,6 +682,10 @@ CREATE INDEX idx_asig_cuid_paciente       ON asignacion_cuidador   (id_paciente)
 CREATE INDEX idx_asig_kit_paciente        ON asignacion_kit        (id_paciente);
 CREATE INDEX idx_lgps_dispositivo_fecha   ON lecturas_gps          (id_dispositivo, fecha_hora DESC);
 CREATE INDEX idx_db_dispositivo_fecha     ON detecciones_beacon    (id_dispositivo, fecha_hora DESC);
+CREATE INDEX idx_db_cuidador_fecha        ON detecciones_beacon    (id_cuidador, fecha_hora DESC);
+CREATE INDEX idx_turno_zona               ON turno_cuidador        (id_zona);
+CREATE INDEX idx_turno_cuidador           ON turno_cuidador        (id_cuidador);
+CREATE INDEX idx_alertas_zona             ON alertas               (id_zona);
 CREATE INDEX idx_lnfc_dispositivo_fecha   ON lecturas_nfc          (id_dispositivo, fecha_hora DESC);
 CREATE INDEX idx_lnfc_receta              ON lecturas_nfc          (id_receta);
 CREATE INDEX idx_alertas_paciente         ON alertas               (id_paciente);
@@ -687,6 +741,77 @@ CREATE UNIQUE INDEX uq_kit_activo_por_paciente
 
 
 -- =============================================================================
+-- BLOQUE 11: TRIGGER — COBERTURA DE ZONA
+-- Dispara cada vez que se inserta una detección beacon. Recorre todas las zonas
+-- con turno activo en ese momento y genera una alerta si alguna lleva más de
+-- 30 minutos sin presencia de cuidador (sin detección con id_cuidador != NULL).
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION fn_verificar_cobertura_zona()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+    r_zona       RECORD;
+    v_ultima     TIMESTAMP;
+    v_id_alerta  INTEGER;
+    v_dow        INTEGER;
+BEGIN
+    -- día de la semana del evento (0=domingo … 6=sábado en PostgreSQL)
+    v_dow := EXTRACT(DOW FROM NEW.fecha_hora)::INTEGER;
+
+    -- recorrer todas las zonas con turno activo en este instante
+    FOR r_zona IN
+        SELECT DISTINCT tc.id_zona
+        FROM turno_cuidador tc
+        WHERE tc.activo = TRUE
+          AND tc.hora_inicio <= NEW.fecha_hora::TIME
+          AND tc.hora_fin    >  NEW.fecha_hora::TIME
+          AND (
+              (v_dow = 1 AND tc.lunes)    OR
+              (v_dow = 2 AND tc.martes)   OR
+              (v_dow = 3 AND tc.miercoles) OR
+              (v_dow = 4 AND tc.jueves)   OR
+              (v_dow = 5 AND tc.viernes)  OR
+              (v_dow = 6 AND tc.sabado)   OR
+              (v_dow = 0 AND tc.domingo)
+          )
+    LOOP
+        -- última detección con cuidador identificado en esta zona (últimos 30 min)
+        SELECT MAX(db.fecha_hora) INTO v_ultima
+        FROM detecciones_beacon db
+        JOIN beacon_zona bz ON db.id_dispositivo = bz.id_dispositivo
+        WHERE bz.id_zona      = r_zona.id_zona
+          AND db.id_cuidador IS NOT NULL
+          AND db.fecha_hora  >= NEW.fecha_hora - INTERVAL '30 minutes';
+
+        -- si no hubo presencia reciente, crear alerta (evitar duplicados activos)
+        IF v_ultima IS NULL THEN
+            IF NOT EXISTS (
+                SELECT 1 FROM alertas
+                WHERE id_zona     = r_zona.id_zona
+                  AND tipo_alerta = 'Zona sin cobertura'
+                  AND estatus     = 'Activa'
+                  AND fecha_hora  >= NEW.fecha_hora - INTERVAL '2 hours'
+            ) THEN
+                SELECT COALESCE(MAX(id_alerta), 0) + 1 INTO v_id_alerta FROM alertas;
+                INSERT INTO alertas
+                    (id_alerta, id_paciente, id_zona, tipo_alerta, fecha_hora, estatus)
+                VALUES
+                    (v_id_alerta, NULL, r_zona.id_zona,
+                     'Zona sin cobertura', NEW.fecha_hora, 'Activa');
+            END IF;
+        END IF;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_cobertura_zona
+AFTER INSERT ON detecciones_beacon
+FOR EACH ROW EXECUTE FUNCTION fn_verificar_cobertura_zona();
+
+
+-- =============================================================================
 -- DATOS SEMILLA
 -- =============================================================================
 
@@ -704,7 +829,7 @@ INSERT INTO cat_estado_dispositivo (estado) VALUES
     ('Activo'), ('Inactivo'), ('Mantenimiento');
 
 INSERT INTO cat_tipo_alerta (tipo_alerta) VALUES
-    ('Salida de Zona'), ('Batería Baja'), ('Botón SOS'), ('Caída');
+    ('Salida de Zona'), ('Batería Baja'), ('Botón SOS'), ('Caída'), ('Zona sin cobertura');
 
 INSERT INTO cat_estado_alerta (estatus) VALUES
     ('Activa'), ('Atendida');
@@ -830,6 +955,27 @@ INSERT INTO zonas (id_zona, nombre_zona, latitud_centro, longitud_centro, radio_
 
 -- gateways y zona_beacons eliminados — no se insertan datos semilla.
 
+-- ── Beacons por zona ──────────────────────────────────────────────────────────
+INSERT INTO beacon_zona (id_dispositivo, id_zona) VALUES
+    (401, 1),   -- BCN-SN-A  → Jardín Norte
+    (402, 2),   -- BCN-SN-B  → Ala Oriente
+    (403, 3),   -- BCN-SN-C  → Patio Sur
+    (404, 4);   -- BCN-SN-D  → Sala de Terapia
+
+-- ── Turnos de cuidadores por zona ─────────────────────────────────────────────
+-- Cuidador 1 (Ana):    Jardín Norte   mañana L-V
+-- Cuidador 2 (Carlos): Jardín Norte   tarde  L-V  /  Sala de Terapia mañana L-V
+-- Cuidador 3 (Sofía):  Ala Oriente    mañana toda la semana
+-- Cuidador 1 (Ana):    Patio Sur      mañana S-D (cobertura fin de semana)
+INSERT INTO turno_cuidador
+    (id_turno, id_cuidador, id_zona, hora_inicio, hora_fin,
+     lunes, martes, miercoles, jueves, viernes, sabado, domingo, activo) VALUES
+    (1, 1, 1, '07:00', '15:00', TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, FALSE, TRUE),
+    (2, 2, 1, '15:00', '23:00', TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, FALSE, TRUE),
+    (3, 3, 2, '07:00', '15:00', TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE),
+    (4, 2, 4, '08:00', '16:00', TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE, FALSE, TRUE),
+    (5, 1, 3, '07:00', '15:00', FALSE, FALSE, FALSE, FALSE, FALSE, TRUE,  TRUE,  TRUE);
+
 -- ── Kits de monitoreo ─────────────────────────────────────────────────────────
 -- Cada kit ahora solo incluye el dispositivo GPS; los beacons son fixtures del edificio.
 
@@ -860,13 +1006,13 @@ INSERT INTO lecturas_gps
 -- Registradas por el teléfono del cuidador vía Web Bluetooth (sin gateway).
 
 INSERT INTO detecciones_beacon
-    (id_deteccion, id_dispositivo, fecha_hora, rssi) VALUES
-    (1, 401, '2026-03-30 08:00:00', -72),
-    (2, 401, '2026-03-30 08:15:00', -68),
-    (3, 402, '2026-03-30 07:10:00', -80),
-    (4, 402, '2026-03-30 07:30:00', -78),
-    (5, 403, '2026-03-30 14:00:00', -55),
-    (6, 404, '2026-03-29 09:00:00', -65);
+    (id_deteccion, id_dispositivo, id_cuidador, fecha_hora, rssi) VALUES
+    (1, 401, 1, '2026-03-30 08:00:00', -72),   -- Ana en Jardín Norte
+    (2, 401, 1, '2026-03-30 08:15:00', -68),
+    (3, 402, 3, '2026-03-30 07:10:00', -80),   -- Sofía en Ala Oriente
+    (4, 402, 3, '2026-03-30 07:30:00', -78),
+    (5, 403, 2, '2026-03-30 14:00:00', -55),   -- Carlos en Patio Sur (fin de semana)
+    (6, 404, 2, '2026-03-29 09:00:00', -65);   -- Carlos en Sala de Terapia
 
 -- ── Alertas ───────────────────────────────────────────────────────────────────
 -- Escenario 1 — Salida de zona (María, pac 1)
