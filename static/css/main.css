@@ -1719,3 +1719,119 @@ select.form-control {
     transform: translateY(-1px);
     box-shadow: 0 4px 14px rgba(14,116,144,0.30);
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   EMERGENCY MODE
+   Activates when alertas_criticas is non-empty (context processor).
+   Classes applied in base.html: body.has-emergency, .sidebar--emergency
+═══════════════════════════════════════════════════════════ */
+
+/* Push body content down to make room for the fixed banner */
+body.has-emergency {
+    padding-top: 46px;
+}
+
+/* Emergency banner — fixed, full-width, above everything */
+.emergency-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 9999;
+    background: linear-gradient(90deg, #7F1D1D 0%, #B91C1C 40%, #E11D48 100%);
+    color: #fff;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    box-shadow: 0 2px 16px rgba(185,28,28,.50);
+    gap: 16px;
+}
+
+.emergency-banner-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.emergency-banner-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    animation: emergency-icon-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes emergency-icon-pulse {
+    0%, 100% { background: rgba(255,255,255,.15); }
+    50%       { background: rgba(255,255,255,.28); }
+}
+
+.emergency-banner-text {
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: .1px;
+}
+
+.emergency-banner-text a {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: rgba(255,255,255,.55);
+}
+.emergency-banner-text a:hover {
+    text-decoration-color: #fff;
+}
+
+.emergency-banner-time {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,.65);
+    margin-left: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.emergency-banner-count {
+    font-size: 11px;
+    font-weight: 800;
+    background: rgba(255,255,255,.20);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 100px;
+    padding: 2px 9px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.emergency-banner-close {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    color: rgba(255,255,255,.80);
+    cursor: pointer;
+    padding: 5px;
+    display: flex; align-items: center;
+    border-radius: 6px;
+    transition: background .12s, color .12s;
+    flex-shrink: 0;
+}
+.emergency-banner-close:hover {
+    background: rgba(255,255,255,.22);
+    color: #fff;
+}
+
+/* Sidebar red pulse when emergency is active */
+@keyframes sidebar-emergency-pulse {
+    0%, 100% { box-shadow: inset 4px 0 0 #E11D48, 2px 0 20px rgba(0,0,0,.25); }
+    50%       { box-shadow: inset 4px 0 0 rgba(225,29,72,.15), 2px 0 20px rgba(0,0,0,.25); }
+}
+
+.sidebar--emergency {
+    animation: sidebar-emergency-pulse 2s ease-in-out infinite;
+}

@@ -1,285 +1,466 @@
 {% extends "portal_familiar/base_familiar.html" %}
 
-{% block title %}{{ paciente.nombre_paciente }} {{ paciente.apellido_p_pac }} — Portal Familiar{% endblock %}
+{% block title %}{{ paciente.nombre_paciente }} — Portal Familiar{% endblock %}
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 1 — Status Banner (full-width, outside pf-content)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+{% block banner %}
+<style>
+.sf-banner {
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    padding: 24px 20px;
+}
+.sf-banner-inner {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 740px;
+    margin: 0 auto;
+}
+.sf-banner-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.20);
+    border: 1.5px solid rgba(255,255,255,.30);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 28px;
+    line-height: 1;
+}
+.sf-banner-body { flex: 1; }
+.sf-banner-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+}
+.sf-banner-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,.80);
+    margin-top: 5px;
+    font-weight: 500;
+}
+.sf-banner-notif {
+    font-size: 11px;
+    color: rgba(255,255,255,.60);
+    margin-top: 6px;
+    font-weight: 500;
+}
+
+/* green */
+.sf-banner--ok { background: #10B981; }
+
+/* red + pulse */
+.sf-banner--critica {
+    background: #F43F5E;
+    animation: sf-pulse 2.5s ease-in-out infinite;
+}
+@keyframes sf-pulse {
+    0%, 100% { background: #F43F5E; }
+    50%       { background: #E11D48; }
+}
+
+/* amber */
+.sf-banner--sin_datos { background: #F59E0B; }
+
+@media (min-width: 480px) {
+    .sf-banner-title { font-size: 28px; }
+    .sf-banner-icon  { width: 72px; height: 72px; font-size: 32px; }
+}
+@media (min-width: 768px) {
+    .sf-banner { padding: 28px 40px; }
+}
+</style>
+
+<div class="sf-banner sf-banner--{{ estado_banner }}">
+    <div class="sf-banner-inner">
+
+        {% if estado_banner == 'critica' %}
+        <div class="sf-banner-icon">⚠</div>
+        <div class="sf-banner-body">
+            <div class="sf-banner-title">Alerta activa</div>
+            <div class="sf-banner-sub">
+                {{ alerta_critica.tipo_alerta }}
+                {% if tiempo_alerta_critica %} — {{ tiempo_alerta_critica }}{% endif %}
+            </div>
+            <div class="sf-banner-notif">El equipo de cuidado ha sido notificado</div>
+        </div>
+
+        {% elif estado_banner == 'sin_datos' %}
+        <div class="sf-banner-icon">⏳</div>
+        <div class="sf-banner-body">
+            <div class="sf-banner-title">Sin datos recientes</div>
+            <div class="sf-banner-sub">
+                Última actividad registrada:
+                {% if tiempo_actividad %}{{ tiempo_actividad }}{% else %}sin registro{% endif %}
+            </div>
+        </div>
+
+        {% else %}
+        <div class="sf-banner-icon">✓</div>
+        <div class="sf-banner-body">
+            <div class="sf-banner-title">
+                {{ paciente.nombre_paciente.split()[0] }} está bien
+            </div>
+            <div class="sf-banner-sub">
+                Última verificación:
+                {% if tiempo_actividad %}{{ tiempo_actividad }}{% else %}recientemente{% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-    #mapa-gps { height: 260px; border-radius: 0 0 14px 14px; z-index: 0; }
-    .pf-row { display: flex; gap: 12px; flex-wrap: wrap; }
-    .pf-row > * { flex: 1 1 140px; }
+/* ── Map — 200px, locked ──────────────────────────────────────────────── */
+#mapa-gps {
+    height: 200px;
+    z-index: 0;
+    cursor: default !important;
+}
+#mapa-gps .leaflet-interactive { cursor: default !important; }
+
+/* ── Medication checklist row ─────────────────────────────────────────── */
+.sf-med-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #F0F9FF;
+}
+.sf-med-row:last-child { border-bottom: none; }
+.sf-med-check {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.sf-med-check--ok    { background: #ECFDF5; border: 1.5px solid #6EE7B7; }
+.sf-med-check--pend  { background: #F8FAFC; border: 1.5px solid #CBD5E1; }
+.sf-med-body { flex: 1; min-width: 0; }
+.sf-med-name { font-size: 14px; font-weight: 600; color: #1E293B; }
+.sf-med-detail {
+    font-size: 11px; color: #94A3B8; margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sf-med-badge-ok   { font-size: 11px; font-weight: 700; color: #059669; }
+.sf-med-badge-pend { font-size: 11px; font-weight: 600; color: #94A3B8; }
+
+/* ── Cuidadores call rows ─────────────────────────────────────────────── */
+.sf-call-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #F0F9FF;
+}
+.sf-call-row:last-child { border-bottom: none; }
+.sf-call-avatar {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #0A4F66, #0E7490);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(14,116,144,.22);
+}
+.sf-call-name { font-size: 14px; font-weight: 700; color: #0F172A; }
+.sf-call-role { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+.sf-call-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #059669; color: #fff;
+    font-size: 13px; font-weight: 700;
+    padding: 10px 18px; border-radius: 10px;
+    text-decoration: none; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(5,150,105,.28);
+    transition: background .12s;
+    flex-shrink: 0;
+}
+.sf-call-btn:hover { background: #047857; }
+
+/* ── Alert rows ───────────────────────────────────────────────────────── */
+.sf-alert-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 20px; border-bottom: 1px solid #F0F9FF;
+}
+.sf-alert-row:last-child { border-bottom: none; }
+.sf-alert-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 5px;
+}
+.sf-alert-dot--activa  { background: #F43F5E; box-shadow: 0 0 0 3px rgba(244,63,94,.12); }
+.sf-alert-dot--atendida { background: #94A3B8; }
+
+/* ── Visit rows ───────────────────────────────────────────────────────── */
+.sf-visit-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px; border-bottom: 1px solid #F0F9FF;
+}
+.sf-visit-row:last-child { border-bottom: none; }
 </style>
 {% endblock %}
 
+
 {% block content %}
 
-<!-- Back -->
-<a href="{{ url_for('portal_index') }}" class="pf-back">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+<!-- Back link -->
+<a href="{{ url_for('portal_index') }}" class="pf-back" style="margin-bottom:20px;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         width="14" height="14">
         <line x1="19" y1="12" x2="5" y2="12"/>
         <polyline points="12 19 5 12 12 5"/>
     </svg>
     Mis familiares
 </a>
 
-<!-- ── PATIENT HEADER ──────────────────────────────────────────────────── -->
-<div class="pf-card" style="margin-bottom:16px; overflow:visible;">
-    <!-- Colored top band -->
-    <div style="height:6px; background: linear-gradient(90deg, #071C27, #0E7490, #2DD4BF);
-                border-radius:16px 16px 0 0;"></div>
-    <div style="padding:20px;">
-        <div style="display:flex; align-items:center; gap:16px; margin-bottom:18px;">
-            <!-- Avatar -->
-            <div style="width:58px; height:58px; border-radius:16px; flex-shrink:0;
-                        background: linear-gradient(135deg, #0A4F66, #0E7490);
-                        display:flex; align-items:center; justify-content:center;
-                        font-size:20px; font-weight:800; color:#fff;
-                        box-shadow:0 3px 12px rgba(14,116,144,.28); letter-spacing:-.5px;">
-                {{ paciente.nombre_paciente[0] }}{{ paciente.apellido_p_pac[0] }}
-            </div>
-            <div style="flex:1;">
-                <div style="font-size:19px; font-weight:800; color:#0F172A; letter-spacing:-0.3px;">
-                    {{ paciente.nombre_paciente }} {{ paciente.apellido_p_pac }} {{ paciente.apellido_m_pac }}
-                </div>
-                <div style="font-size:12px; color:#64748B; margin-top:4px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <span>{{ edad }} años</span>
-                    <span style="color:#D4E9F5;">·</span>
-                    <span style="display:flex; align-items:center; gap:4px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" width="11" height="11">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        </svg>
-                        {{ paciente.nombre_sede or '—' }}
-                    </span>
-                </div>
-            </div>
-            <span class="pf-badge {% if paciente.desc_estado == 'Activo' %}pf-badge-green
-                                   {% elif paciente.desc_estado == 'En Hospital' %}pf-badge-amber
-                                   {% else %}pf-badge-gray{% endif %}">
-                {{ paciente.desc_estado }}
-            </span>
+<!-- Patient identity (compact — the banner already answered the main question) -->
+<div class="pf-card" style="margin-bottom:20px;">
+    <div style="padding:16px 20px; display:flex; align-items:center; gap:14px;">
+        <div style="width:48px; height:48px; border-radius:14px; flex-shrink:0;
+                    background:linear-gradient(135deg,#0A4F66,#0E7490);
+                    display:flex; align-items:center; justify-content:center;
+                    font-size:16px; font-weight:800; color:#fff;
+                    box-shadow:0 2px 10px rgba(14,116,144,.24);">
+            {{ paciente.nombre_paciente[0] }}{{ paciente.apellido_p_pac[0] }}
         </div>
-
-        {% if cuidadores %}
-        <div style="border-top: 1px solid #EEF6FB; padding-top: 16px;">
-            <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase;
-                        letter-spacing:.9px; margin-bottom:12px;">Cuidadores asignados</div>
-            {% for c in cuidadores %}
-            <div class="pf-cuid-row" style="padding-left:0; padding-right:0;">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:34px; height:34px; border-radius:10px; flex-shrink:0;
-                                background: linear-gradient(135deg, #0A4F66, #0E7490);
-                                display:flex; align-items:center; justify-content:center;
-                                font-size:12px; font-weight:800; color:#fff;">
-                        {{ c.nombre[0] }}
-                    </div>
-                    <span style="font-size:13px; font-weight:600; color:#1E293B;">{{ c.nombre }}</span>
-                </div>
-                <a href="tel:{{ c.telefono }}"
-                   style="font-size:12px; color:#0E7490; font-weight:600;
-                          background:#E0F2FE; padding:5px 12px; border-radius:8px; transition:background .12s;"
-                   onmouseenter="this.style.background='#BAE6FD'"
-                   onmouseleave="this.style.background='#E0F2FE'">
-                    {{ c.telefono }}
-                </a>
+        <div style="flex:1; min-width:0;">
+            <div style="font-size:16px; font-weight:800; color:#0F172A; letter-spacing:-.2px;">
+                {{ paciente.nombre_paciente }} {{ paciente.apellido_p_pac }}
+                {% if paciente.apellido_m_pac %} {{ paciente.apellido_m_pac }}{% endif %}
             </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- ── ACTIVE ALERTS BANNER ───────────────────────────────────────────────── -->
-{% if alertas_activas %}
-<div class="pf-alert-banner red">
-    <div class="pf-alert-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#BE123C" stroke-width="2.5" width="17" height="17">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-    </div>
-    <div>
-        <div>{{ alertas_activas | length }} alerta(s) activa(s)</div>
-        <div style="font-size:11px; font-weight:500; opacity:.75; margin-top:2px;">El personal ha sido notificado</div>
-    </div>
-</div>
-{% else %}
-<div class="pf-alert-banner green">
-    <div class="pf-alert-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="2.5" width="17" height="17">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-        </svg>
-    </div>
-    <div>
-        <div>Todo en orden</div>
-        <div style="font-size:11px; font-weight:500; opacity:.75; margin-top:2px;">Sin alertas activas en este momento</div>
-    </div>
-</div>
-{% endif %}
-
-<!-- ── LAST KNOWN LOCATION ─────────────────────────────────────────────── -->
-<div class="pf-card">
-    <div class="pf-card-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-            <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-        </svg>
-        Última ubicación conocida
-    </div>
-    {% if ultima_gps %}
-    <div class="pf-card-body" style="padding-bottom:0;">
-        <div class="pf-row" style="margin-bottom:18px;">
-            <div>
-                <div class="pf-kv-label">Fecha y hora</div>
-                <div class="pf-kv-value" style="font-size:13px;">
-                    {{ ultima_gps.fecha[8:10] }}/{{ ultima_gps.fecha[5:7] }}/{{ ultima_gps.fecha[0:4] }}
-                    &nbsp;{{ ultima_gps.hora }}
-                </div>
-            </div>
-            <div>
-                <div class="pf-kv-label">Estado</div>
-                {% if dentro_zona %}
-                <span class="pf-badge pf-badge-green">Dentro de zona</span>
-                {% else %}
-                <span class="pf-badge pf-badge-red">Fuera de zona</span>
+            <div style="font-size:12px; color:#64748B; margin-top:3px;
+                        display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>{{ edad }} años</span>
+                {% if paciente.nombre_sede %}
+                <span style="color:#CBD5E1;">·</span>
+                <span>{{ paciente.nombre_sede }}</span>
                 {% endif %}
             </div>
-            {% if ultima_gps.nivel_bateria is not none %}
-            <div>
-                <div class="pf-kv-label">Batería GPS</div>
-                <div class="pf-kv-value" style="font-size:13px;
-                     color:{% if ultima_gps.nivel_bateria <= 15 %}#BE123C{% elif ultima_gps.nivel_bateria <= 35 %}#D97706{% else %}#0F172A{% endif %};">
-                    {{ ultima_gps.nivel_bateria }}%
-                </div>
-            </div>
-            {% endif %}
         </div>
-        <div id="mapa-gps"></div>
-    </div>
-    <div style="padding:10px 20px; font-size:11px; color:#94A3B8; background:#F7FCFF;
-                border-top:1px solid #E0F2FE;">
-        Posición tomada de la última lectura GPS registrada. Actualización en tiempo real próximamente.
-    </div>
-    {% else %}
-    <div class="pf-empty">Sin lecturas GPS registradas para este paciente.</div>
-    {% endif %}
-</div>
-
-<!-- ── ACTIVE ALERTS LIST ──────────────────────────────────────────────── -->
-<div class="pf-card">
-    <div class="pf-card-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-        </svg>
-        Alertas activas
-    </div>
-    {% if alertas_activas %}
-    <table class="pf-table">
-        <thead>
-            <tr>
-                <th>Tipo</th>
-                <th>Fecha</th>
-                <th>Hora</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for a in alertas_activas %}
-            <tr>
-                <td style="font-weight:600;">{{ a.tipo_alerta }}</td>
-                <td style="font-variant-numeric:tabular-nums; color:#64748B;">
-                    {{ a.fecha[8:10] }}/{{ a.fecha[5:7] }}/{{ a.fecha[0:4] }}
-                </td>
-                <td style="font-variant-numeric:tabular-nums; color:#64748B;">{{ a.hora }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="pf-empty">Sin alertas activas.</div>
-    {% endif %}
-</div>
-
-<!-- ── ALERT HISTORY ───────────────────────────────────────────────────── -->
-<div class="pf-card">
-    <div class="pf-card-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
-        Historial de alertas
-        <span style="font-weight:500; color:#94A3B8; text-transform:none; letter-spacing:0; font-size:11px;">
-            — últimos 30 días
+        <span class="pf-badge
+            {% if paciente.desc_estado == 'Activo' %}pf-badge-green
+            {% elif paciente.desc_estado == 'En Hospital' %}pf-badge-amber
+            {% else %}pf-badge-gray{% endif %}">
+            {{ paciente.desc_estado }}
         </span>
     </div>
-    {% if alertas_historial %}
-    <table class="pf-table">
-        <thead>
-            <tr><th>Tipo</th><th>Fecha</th><th>Hora</th><th>Estado</th></tr>
-        </thead>
-        <tbody>
-            {% for a in alertas_historial %}
-            <tr>
-                <td style="font-weight:500;">{{ a.tipo_alerta }}</td>
-                <td style="font-variant-numeric:tabular-nums; font-size:12px; color:#64748B;">
-                    {{ a.fecha[8:10] }}/{{ a.fecha[5:7] }}/{{ a.fecha[0:4] }}
-                </td>
-                <td style="font-variant-numeric:tabular-nums; font-size:12px; color:#64748B;">{{ a.hora }}</td>
-                <td><span class="pf-badge pf-badge-gray">Atendida</span></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 2 — Location Card
+   ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="pf-card" style="margin-bottom:20px;">
+    <div class="pf-card-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             width="13" height="13">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+        </svg>
+        Ubicación
+    </div>
+
+    {% if ultima_gps %}
+    <div id="mapa-gps"></div>
+    <div style="padding:12px 18px; background:#F7FCFF; border-top:1px solid #E0F2FE;
+                display:flex; align-items:center; gap:8px;">
+        <span style="font-size:15px;">📍</span>
+        <span style="font-size:13px; font-weight:600;
+                     color:{% if dentro_zona %}#059669{% else %}#BE123C{% endif %};">
+            {% if dentro_zona %}
+                {{ nombre_zona_actual or 'Zona segura' }}
+            {% else %}
+                Fuera de zona segura
+            {% endif %}
+        </span>
+        <span style="color:#CBD5E1; font-size:12px;">—</span>
+        <span style="font-size:12px; color:#94A3B8;">
+            {{ tiempo_gps or 'sin registro de tiempo' }}
+        </span>
+    </div>
     {% else %}
-    <div class="pf-empty">Sin alertas atendidas en los últimos 30 días.</div>
+    <div class="pf-empty" style="display:flex; align-items:center; justify-content:center;
+                                  gap:8px; padding:32px 20px;">
+        <span style="font-size:20px; opacity:.4;">📍</span>
+        <span>Ubicación GPS no disponible</span>
+    </div>
     {% endif %}
 </div>
 
-<!-- ── MEDICATION STATUS ───────────────────────────────────────────────── -->
-<div class="pf-card">
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 3 — Today's Medication Checklist
+   ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="pf-card" style="margin-bottom:20px;">
     <div class="pf-card-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-        </svg>
-        Medicamentos y adherencia hoy
+        <span style="font-size:13px; line-height:1;">💊</span>
+        Medicinas de hoy
     </div>
+
     {% if medicamentos %}
-    <!-- Adherence summary -->
-    <div style="padding:16px 20px; border-bottom:1px solid #EEF6FB; background:#F7FCFF;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-            <span style="font-size:13px; font-weight:600; color:#0F172A;">
-                Dosis confirmadas hoy (NFC)
+    {% set tomadas = medicamentos | selectattr('tomada_hoy') | list | length %}
+    {% set total = medicamentos | length %}
+
+    <!-- Progress summary -->
+    <div style="padding:14px 20px 10px; border-bottom:1px solid #EEF6FB;">
+        <div style="display:flex; align-items:center; justify-content:space-between;
+                    margin-bottom:8px;">
+            <span style="font-size:12px; color:#64748B; font-weight:600;">
+                Confirmadas con NFC hoy
             </span>
-            {% set pct = ((dosis_hoy / medicamentos_total) * 100) | int if medicamentos_total > 0 else 0 %}
-            <span style="font-size:20px; font-weight:800; font-variant-numeric:tabular-nums;
-                         color:{% if pct == 100 %}#059669{% elif pct >= 50 %}#0E7490{% else %}#D97706{% endif %};">
-                {{ dosis_hoy }}<span style="font-size:13px; font-weight:600; color:#94A3B8;"> / {{ medicamentos_total }}</span>
+            <span style="font-size:22px; font-weight:800; font-variant-numeric:tabular-nums;
+                         color:{% if tomadas == total %}#059669
+                                {% elif tomadas > 0 %}#0E7490
+                                {% else %}#D97706{% endif %};">
+                {{ tomadas }}<span style="font-size:13px; font-weight:600; color:#94A3B8;"> / {{ total }}</span>
             </span>
         </div>
-        <div class="pf-progress-bar">
-            <div class="pf-progress-fill" style="width:{{ pct }}%;
-                 background:{% if pct == 100 %}#059669{% elif pct >= 50 %}#0E7490{% else %}#D97706{% endif %};"></div>
-        </div>
-        <div style="font-size:11px; color:#94A3B8; margin-top:6px;">
-            Lecturas NFC exitosas vs. medicamentos en prescripción activa
+        <div style="height:8px; border-radius:100px; background:#E0F2FE; overflow:hidden;">
+            <div style="height:100%; border-radius:100px;
+                        width:{{ ((tomadas / total) * 100) | int if total > 0 else 0 }}%;
+                        background:{% if tomadas == total %}#059669
+                                    {% elif tomadas > 0 %}#0E7490
+                                    {% else %}#F59E0B{% endif %};
+                        transition:width .4s;"></div>
         </div>
     </div>
-    <!-- Medicine list -->
+
+    <!-- Per-medication rows -->
     {% for m in medicamentos %}
-    <div class="pf-med-row">
-        <div>
-            <div style="font-size:13px; font-weight:600; color:#1E293B;">{{ m.nombre_medicamento }}</div>
-            <div style="font-size:11px; color:#64748B; margin-top:2px;">{{ m.dosis }}</div>
+    <div class="sf-med-row">
+        <div class="sf-med-check {% if m.tomada_hoy %}sf-med-check--ok{% else %}sf-med-check--pend{% endif %}">
+            {% if m.tomada_hoy %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"
+                 width="14" height="14">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {% else %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="2"
+                 width="12" height="12">
+                <circle cx="12" cy="12" r="10"/>
+            </svg>
+            {% endif %}
         </div>
-        <span class="pf-badge pf-badge-teal">Cada {{ m.frecuencia_horas }}h</span>
+        <div class="sf-med-body">
+            <div class="sf-med-name">{{ m.nombre_medicamento }}</div>
+            <div class="sf-med-detail">
+                {{ m.dosis }} · cada {{ m.frecuencia_horas }}h
+            </div>
+        </div>
+        {% if m.tomada_hoy %}
+        <span class="sf-med-badge-ok">Tomada ✓</span>
+        {% else %}
+        <span class="sf-med-badge-pend">Pendiente</span>
+        {% endif %}
     </div>
     {% endfor %}
+
     {% else %}
-    <div class="pf-empty">Sin prescripciones registradas.</div>
+    <div class="pf-empty">Sin prescripciones activas registradas.</div>
     {% endif %}
 </div>
 
-<!-- ── RECENT VISITS ───────────────────────────────────────────────────── -->
-<div class="pf-card">
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 4 — Cuidadores de guardia (tap-to-call)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="pf-card" style="margin-bottom:20px;">
     <div class="pf-card-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             width="13" height="13">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Cuidadores de guardia
+    </div>
+    {% if cuidadores %}
+        {% for c in cuidadores %}
+        <div class="sf-call-row">
+            <div class="sf-call-avatar">{{ c.nombre[0] }}</div>
+            <div style="flex:1; min-width:0;">
+                <div class="sf-call-name">{{ c.nombre }}</div>
+                <div class="sf-call-role">Cuidador asignado</div>
+            </div>
+            {% if c.telefono %}
+            <a href="tel:{{ c.telefono }}" class="sf-call-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" width="14" height="14">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35a2 2 0 0 1 1.99-2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.86-.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 16z"/>
+                </svg>
+                Llamar
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="pf-empty">Sin cuidadores asignados actualmente.</div>
+    {% endif %}
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 5 — Alertas recientes
+   ═══════════════════════════════════════════════════════════════════════════ #}
+{% set todas_alertas = alertas_activas + alertas_historial %}
+<div class="pf-card" style="margin-bottom:20px;">
+    <div class="pf-card-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             width="13" height="13">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Alertas
+        <span style="font-size:10px; font-weight:500; color:#94A3B8; text-transform:none;
+                     letter-spacing:0; margin-left:auto;">últimos 30 días</span>
+    </div>
+    {% if todas_alertas %}
+        {% for a in alertas_activas %}
+        <div class="sf-alert-row">
+            <div class="sf-alert-dot sf-alert-dot--activa"></div>
+            <div style="flex:1;">
+                <div style="font-size:13px; font-weight:700; color:#BE123C;">
+                    {{ a.tipo_alerta }}
+                </div>
+                <div style="font-size:11px; color:#94A3B8; margin-top:2px; font-variant-numeric:tabular-nums;">
+                    {{ a.fecha[8:10] }}/{{ a.fecha[5:7] }}/{{ a.fecha[0:4] }} · {{ a.hora }}
+                </div>
+            </div>
+            <span class="pf-badge pf-badge-red" style="font-size:10px; flex-shrink:0;">Activa</span>
+        </div>
+        {% endfor %}
+        {% for a in alertas_historial %}
+        <div class="sf-alert-row">
+            <div class="sf-alert-dot sf-alert-dot--atendida"></div>
+            <div style="flex:1;">
+                <div style="font-size:13px; font-weight:500; color:#334155;">
+                    {{ a.tipo_alerta }}
+                </div>
+                <div style="font-size:11px; color:#94A3B8; margin-top:2px; font-variant-numeric:tabular-nums;">
+                    {{ a.fecha[8:10] }}/{{ a.fecha[5:7] }}/{{ a.fecha[0:4] }} · {{ a.hora }}
+                </div>
+            </div>
+            <span class="pf-badge pf-badge-gray" style="font-size:10px; flex-shrink:0;">Atendida</span>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="pf-empty">Sin alertas en los últimos 30 días.</div>
+    {% endif %}
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 6 — Visitas recientes
+   ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="pf-card" style="margin-bottom:20px;">
+    <div class="pf-card-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             width="13" height="13">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
@@ -288,76 +469,44 @@
         Visitas recientes
     </div>
     {% if visitas %}
-    <table class="pf-table">
-        <thead>
-            <tr>
-                <th>Visitante</th>
-                <th>Parentesco</th>
-                <th>Fecha</th>
-                <th>Entrada</th>
-                <th>Salida</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for v in visitas %}
-            <tr>
-                <td style="font-weight:600;">{{ v.visitante }}</td>
-                <td style="font-size:12px; color:#64748B;">{{ v.relacion }}</td>
-                <td style="font-size:12px; font-variant-numeric:tabular-nums; color:#64748B;">
+        {% for v in visitas %}
+        <div class="sf-visit-row">
+            <div style="width:38px; height:38px; border-radius:10px; flex-shrink:0;
+                        background:#F0F9FF; display:flex; align-items:center;
+                        justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="2"
+                     width="16" height="16">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                </svg>
+            </div>
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:13px; font-weight:600; color:#1E293B;
+                            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    {{ v.visitante }}
+                </div>
+                <div style="font-size:11px; color:#94A3B8; margin-top:2px;">{{ v.relacion }}</div>
+            </div>
+            <div style="text-align:right; flex-shrink:0;">
+                <div style="font-size:12px; font-weight:600; color:#0E7490;
+                            font-variant-numeric:tabular-nums;">
                     {{ v.fecha[8:10] }}/{{ v.fecha[5:7] }}/{{ v.fecha[0:4] }}
-                </td>
-                <td style="font-size:12px; font-variant-numeric:tabular-nums; color:#0E7490; font-weight:600;">
+                </div>
+                <div style="font-size:11px; color:#94A3B8; margin-top:1px;
+                            font-variant-numeric:tabular-nums;">
                     {{ v.hora_entrada }}
-                </td>
-                <td style="font-size:12px; font-variant-numeric:tabular-nums; color:#64748B;">
-                    {{ v.hora_salida if v.hora_salida else '—' }}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    {% if v.hora_salida %} — {{ v.hora_salida }}{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     {% else %}
     <div class="pf-empty">Sin visitas registradas.</div>
     {% endif %}
 </div>
 
-<!-- ── CAREGIVER ROUND STATUS ─────────────────────────────────────────── -->
-<div class="pf-card">
-    <div class="pf-card-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-        </svg>
-        Rondas del cuidador
-    </div>
-    <div class="pf-card-body">
-        {% if ultima_ronda %}
-        <div style="display:flex; align-items:center; gap:14px;">
-            <div style="width:42px; height:42px; border-radius:12px;
-                        background: linear-gradient(135deg, #0A4F66, #0E7490);
-                        display:flex; align-items:center; justify-content:center; flex-shrink:0;
-                        box-shadow:0 2px 8px rgba(14,116,144,.22);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="18" height="18">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-            </div>
-            <div>
-                <div style="font-size:13px; font-weight:700; color:#0F172A;">Última ronda registrada</div>
-                <div style="font-size:12px; color:#0E7490; font-weight:600; margin-top:3px; font-variant-numeric:tabular-nums;">
-                    {{ ultima_ronda.strftime('%d/%m/%Y %H:%M') if ultima_ronda else '—' }}
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <div class="pf-empty" style="padding:14px 0;">Sin rondas beacon registradas para esta sede.</div>
-        {% endif %}
-        <div style="font-size:11px; color:#CBD5E1; margin-top:14px; border-top:1px solid #EEF6FB; padding-top:10px;">
-            Los registros de ronda se basan en detecciones BLE de beacons del edificio.
-        </div>
-    </div>
-</div>
-
 {% endblock %}
+
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -366,29 +515,40 @@
 document.addEventListener('DOMContentLoaded', function () {
     var lat = {{ ultima_gps.latitud }};
     var lng = {{ ultima_gps.longitud }};
-    var map = L.map('mapa-gps').setView([lat, lng], 17);
+
+    // Non-interactive — just a visual reference
+    var map = L.map('mapa-gps', {
+        zoomControl:       false,
+        dragging:          false,
+        scrollWheelZoom:   false,
+        doubleClickZoom:   false,
+        touchZoom:         false,
+        keyboard:          false,
+        attributionControl:false,
+    }).setView([lat, lng], 16);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-        maxZoom: 19
+        maxZoom: 19,
     }).addTo(map);
 
+    // Safe zone circles
     {% for z in zonas_seguras %}
     L.circle([{{ z.latitud_centro }}, {{ z.longitud_centro }}], {
         radius: {{ z.radio_metros }},
         color: '#059669', weight: 2,
-        fillColor: '#ECFDF5', fillOpacity: 0.35
-    }).addTo(map).bindPopup('{{ z.nombre_zona }}');
+        fillColor: '#ECFDF5', fillOpacity: 0.35,
+        interactive: false,
+    }).addTo(map);
     {% endfor %}
 
-    var markerColor = {{ 'true' if dentro_zona else 'false' }} ? '#059669' : '#E11D48';
+    // Patient position marker
+    var dotColor = {{ 'true' if dentro_zona else 'false' }} ? '#059669' : '#F43F5E';
     var icon = L.divIcon({
-        html: '<div style="width:14px;height:14px;border-radius:50%;background:' + markerColor +
-              ';border:3px solid #fff;box-shadow:0 0 0 2px ' + markerColor + ';"></div>',
-        iconSize: [14, 14], iconAnchor: [7, 7], className: ''
+        html: '<div style="width:14px;height:14px;border-radius:50%;background:' + dotColor +
+              ';border:3px solid #fff;box-shadow:0 0 0 2px ' + dotColor + ';"></div>',
+        iconSize: [14, 14], iconAnchor: [7, 7], className: '',
     });
-    L.marker([lat, lng], {icon: icon}).addTo(map)
-        .bindPopup('Última posición — {{ ultima_gps.fecha[8:10] }}/{{ ultima_gps.fecha[5:7] }}/{{ ultima_gps.fecha[0:4] }} {{ ultima_gps.hora }}');
+    L.marker([lat, lng], { icon: icon, interactive: false }).addTo(map);
 });
 </script>
 {% endif %}

@@ -10,8 +10,44 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
-<body>
-<aside class="sidebar">
+<body class="{% if alertas_criticas %}has-emergency{% endif %}">
+
+{% if alertas_criticas %}
+<div class="emergency-banner" id="emergency-banner">
+    <div class="emergency-banner-inner">
+        <div class="emergency-banner-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" width="15" height="15">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </div>
+        {% if alertas_criticas | length == 1 %}
+            {% set a = alertas_criticas[0] %}
+            <span class="emergency-banner-text">
+                ALERTA CRÍTICA —
+                <a href="{{ url_for('alertas') }}">{{ a.nombre_paciente }}</a>
+                · {{ a.tipo_alerta }}
+            </span>
+            <span class="emergency-banner-time">{{ a.tiempo }}</span>
+        {% else %}
+            <span class="emergency-banner-text">
+                <a href="{{ url_for('alertas') }}">{{ alertas_criticas | length }} ALERTAS CRÍTICAS ACTIVAS</a>
+                — requieren atención inmediata
+            </span>
+            <span class="emergency-banner-count">{{ alertas_criticas | length }}</span>
+        {% endif %}
+    </div>
+    <button class="emergency-banner-close" onclick="document.getElementById('emergency-banner').style.display='none'; document.body.classList.remove('has-emergency');" title="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+    </button>
+</div>
+{% endif %}
+
+<aside class="sidebar {% if alertas_criticas %}sidebar--emergency{% endif %}">
 
     <div class="sidebar-logo">
         <div class="brand">

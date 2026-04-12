@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Escáner Cuidador — AlzMonitor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #071C27;
+            color: #F1F5F9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ──────────────────────────────────────────────────── */
+        .cw-header {
+            background: linear-gradient(135deg, #071C27, #0A4F66);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+        .cw-brand { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -.2px; }
+        .cw-brand span { color: #2DD4BF; }
+        .cw-back {
+            font-size: 12px; font-weight: 600; color: #94A3B8;
+            text-decoration: none; padding: 5px 10px;
+            border-radius: 7px; border: 1px solid rgba(255,255,255,.1);
+            transition: color .12s, background .12s;
+        }
+        .cw-back:hover { color: #fff; background: rgba(255,255,255,.08); }
+
+        /* ── Main ─────────────────────────────────────────────────────── */
+        .cw-main {
+            flex: 1;
+            padding: 28px 20px 48px;
+            max-width: 480px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* ── Section card ─────────────────────────────────────────────── */
+        .cw-card {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .cw-card-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: .9px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cw-card-title svg { opacity: .6; }
+
+        /* ── Scan button ──────────────────────────────────────────────── */
+        .cw-scan-btn {
+            width: 100%;
+            padding: 20px;
+            border-radius: 14px;
+            border: none;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: transform .1s, filter .1s;
+            touch-action: manipulation;
+        }
+        .cw-scan-btn:active { transform: scale(.97); }
+        .cw-scan-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+        .cw-btn-nfc {
+            background: linear-gradient(135deg, #059669, #10B981);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(16,185,129,.30);
+        }
+        .cw-btn-beacon {
+            background: linear-gradient(135deg, #1D4ED8, #3B82F6);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(59,130,246,.30);
+        }
+        .cw-btn-nfc:hover:not(:disabled)    { filter: brightness(1.05); }
+        .cw-btn-beacon:hover:not(:disabled) { filter: brightness(1.05); }
+
+        /* ── Status display ───────────────────────────────────────────── */
+        .cw-status {
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            display: none;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .cw-status.visible { display: flex; }
+        .cw-status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+        .cw-status.ok     { background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); }
+        .cw-status.ok .cw-status-dot    { background: #10B981; }
+        .cw-status.error  { background: rgba(244,63,94,.10); border: 1px solid rgba(244,63,94,.25); }
+        .cw-status.error .cw-status-dot { background: #F43F5E; }
+        .cw-status.pending { background: rgba(245,158,11,.10); border: 1px solid rgba(245,158,11,.25); }
+        .cw-status.pending .cw-status-dot { background: #F59E0B; animation: dot-pulse 1s ease-in-out infinite; }
+
+        @keyframes dot-pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.3; }
+        }
+        .cw-status-body { flex: 1; line-height: 1.5; }
+        .cw-status-body small { font-size: 11px; font-weight: 500; opacity: .7; display: block; margin-top: 3px; }
+
+        /* ── Log ──────────────────────────────────────────────────────── */
+        .cw-log {
+            margin-top: 24px;
+        }
+        .cw-log-title {
+            font-size: 10px; font-weight: 700; color: #475569;
+            text-transform: uppercase; letter-spacing: .8px;
+            margin-bottom: 10px;
+        }
+        .cw-log-list { list-style: none; }
+        .cw-log-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 9px;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.06);
+        }
+        .cw-log-item .dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .cw-log-item.ok    .dot { background: #10B981; }
+        .cw-log-item.error .dot { background: #F43F5E; }
+        .cw-log-time {
+            margin-left: auto;
+            font-size: 10px;
+            color: #475569;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+        .cw-log-empty {
+            text-align: center;
+            color: #475569;
+            font-size: 12px;
+            padding: 16px 0;
+        }
+
+        /* ── Support note ─────────────────────────────────────────────── */
+        .cw-note {
+            font-size: 11px;
+            color: #475569;
+            text-align: center;
+            line-height: 1.6;
+            margin-top: 8px;
+        }
+        .cw-note a { color: #2DD4BF; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<header class="cw-header">
+    <div class="cw-brand">Alz<span>Monitor</span> · Cuidador</div>
+    <a href="{{ url_for('dashboard') }}" class="cw-back">← Panel</a>
+</header>
+
+<main class="cw-main">
+
+    <!-- ── NFC Section ─────────────────────────────────────────────────── -->
+    <div class="cw-card">
+        <div class="cw-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 width="14" height="14">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <path d="M2 10h20"/>
+            </svg>
+            Adherencia NFC
+        </div>
+
+        <button class="cw-scan-btn cw-btn-nfc" id="btn-nfc" onclick="escanearNFC()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 width="20" height="20">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <path d="M2 10h20"/>
+            </svg>
+            Escanear pulsera NFC
+        </button>
+
+        <div class="cw-status" id="nfc-status">
+            <div class="cw-status-dot"></div>
+            <div class="cw-status-body" id="nfc-status-text"></div>
+        </div>
+
+        <p class="cw-note" style="margin-top:14px;">
+            Acerque el teléfono a la pulsera NFC del paciente.<br>
+            <span style="color:#F59E0B;">Requiere Chrome en Android.</span>
+        </p>
+    </div>
+
+    <!-- ── Beacon Section ──────────────────────────────────────────────── -->
+    <div class="cw-card">
+        <div class="cw-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 width="14" height="14">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                <circle cx="12" cy="20" r="1"/>
+            </svg>
+            Ronda Beacon (BLE)
+        </div>
+
+        <button class="cw-scan-btn cw-btn-beacon" id="btn-beacon" onclick="escanearBeacon()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 width="20" height="20">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                <circle cx="12" cy="20" r="1"/>
+            </svg>
+            Detectar beacon en zona
+        </button>
+
+        <div class="cw-status" id="beacon-status">
+            <div class="cw-status-dot"></div>
+            <div class="cw-status-body" id="beacon-status-text"></div>
+        </div>
+
+        <p class="cw-note" style="margin-top:14px;">
+            Detecta automáticamente el beacon BLE más cercano.<br>
+            <span style="color:#F59E0B;">Requiere Chrome con permisos Bluetooth.</span>
+        </p>
+    </div>
+
+    <!-- ── Activity log ────────────────────────────────────────────────── -->
+    <div class="cw-log">
+        <div class="cw-log-title">Registro de esta sesión</div>
+        <ul class="cw-log-list" id="log-list">
+            <li class="cw-log-empty" id="log-empty">Sin actividad registrada aún</li>
+        </ul>
+    </div>
+
+</main>
+
+<script>
+// ── Helpers ────────────────────────────────────────────────────────────────
+function setStatus(el, textEl, cls, html) {
+    el.className = 'cw-status visible ' + cls;
+    textEl.innerHTML = html;
+}
+
+function addLog(cls, text) {
+    const ul = document.getElementById('log-list');
+    const empty = document.getElementById('log-empty');
+    if (empty) empty.remove();
+
+    const now = new Date();
+    const t = now.getHours().toString().padStart(2,'0') + ':' +
+              now.getMinutes().toString().padStart(2,'0') + ':' +
+              now.getSeconds().toString().padStart(2,'0');
+
+    const li = document.createElement('li');
+    li.className = 'cw-log-item ' + cls;
+    li.innerHTML = `<span class="dot"></span><span>${text}</span><span class="cw-log-time">${t}</span>`;
+    ul.insertBefore(li, ul.firstChild);
+}
+
+async function postApi(url, body) {
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    return r.json();
+}
+
+// ── NFC ────────────────────────────────────────────────────────────────────
+async function escanearNFC() {
+    const btn    = document.getElementById('btn-nfc');
+    const status = document.getElementById('nfc-status');
+    const stText = document.getElementById('nfc-status-text');
+
+    if (!('NDEFReader' in window)) {
+        setStatus(status, stText, 'error',
+            'Web NFC no disponible.<small>Usa Chrome en Android con la pulsera acercada.</small>');
+        return;
+    }
+
+    btn.disabled = true;
+    setStatus(status, stText, 'pending', 'Esperando pulsera NFC…<small>Acerca el teléfono al brazalete.</small>');
+
+    try {
+        const ndef = new NDEFReader();
+        await ndef.scan();
+
+        ndef.onreading = async (event) => {
+            ndef.onreading = null;     // single-shot
+            btn.disabled = false;
+
+            // Read serial from first NDEF text record, fallback to serialNumber
+            let serial = event.serialNumber || '';
+            for (const record of event.message.records) {
+                if (record.recordType === 'text') {
+                    const decoder = new TextDecoder(record.encoding || 'utf-8');
+                    serial = decoder.decode(record.data).trim();
+                    break;
+                }
+            }
+
+            if (!serial) {
+                setStatus(status, stText, 'error',
+                    'No se pudo leer el serial de la pulsera.<small>Intente de nuevo.</small>');
+                addLog('error', 'NFC — sin serial');
+                return;
+            }
+
+            setStatus(status, stText, 'pending',
+                `Serial: <b>${serial}</b><small>Registrando en servidor…</small>`);
+
+            const resp = await postApi('/api/nfc/lectura', {
+                serial,
+                tipo_lectura: 'Administración',
+                resultado: 'Exitosa',
+            });
+
+            if (resp.ok) {
+                setStatus(status, stText, 'ok',
+                    `Adherencia registrada<small>Receta #${resp.id_receta} · Lectura #${resp.id_lectura_nfc}</small>`);
+                addLog('ok', `NFC ${serial} → receta #${resp.id_receta}`);
+            } else {
+                setStatus(status, stText, 'error',
+                    `Error: ${resp.error}<small>Serial: ${serial}</small>`);
+                addLog('error', `NFC ${serial} — ${resp.error}`);
+            }
+        };
+
+        ndef.onerror = (err) => {
+            btn.disabled = false;
+            setStatus(status, stText, 'error', `Error NFC: ${err.message}`);
+            addLog('error', `NFC error: ${err.message}`);
+        };
+
+    } catch (err) {
+        btn.disabled = false;
+        setStatus(status, stText, 'error',
+            `No se pudo iniciar el escáner NFC.<small>${err.message}</small>`);
+        addLog('error', `NFC init error: ${err.message}`);
+    }
+}
+
+// ── BLE Beacon ─────────────────────────────────────────────────────────────
+async function escanearBeacon() {
+    const btn    = document.getElementById('btn-beacon');
+    const status = document.getElementById('beacon-status');
+    const stText = document.getElementById('beacon-status-text');
+
+    if (!navigator.bluetooth) {
+        setStatus(status, stText, 'error',
+            'Web Bluetooth no disponible.<small>Usa Chrome con Bluetooth habilitado.</small>');
+        return;
+    }
+
+    btn.disabled = true;
+    setStatus(status, stText, 'pending', 'Buscando beacon BLE más cercano…');
+
+    try {
+        // Request any BLE device visible — caregiver selects from the list
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [],
+        });
+
+        const serial = device.name || device.id || '';
+        const rssi   = -65;   // Web Bluetooth doesn't expose RSSI in requestDevice; use a typical value
+
+        setStatus(status, stText, 'pending',
+            `Beacon: <b>${device.name || device.id}</b><small>Registrando ronda…</small>`);
+
+        const resp = await postApi('/api/beacon/deteccion', {
+            serial,
+            rssi,
+        });
+
+        btn.disabled = false;
+
+        if (resp.ok) {
+            setStatus(status, stText, 'ok',
+                `Ronda registrada<small>Beacon ${serial} · Detección #${resp.id_deteccion}</small>`);
+            addLog('ok', `Beacon ${serial} → detección #${resp.id_deteccion}`);
+        } else {
+            setStatus(status, stText, 'error',
+                `Error: ${resp.error}<small>Serial: ${serial}</small>`);
+            addLog('error', `Beacon ${serial} — ${resp.error}`);
+        }
+
+    } catch (err) {
+        btn.disabled = false;
+        if (err.name === 'NotFoundError') {
+            setStatus(status, stText, 'error', 'No se seleccionó ningún dispositivo.');
+        } else {
+            setStatus(status, stText, 'error',
+                `Error Bluetooth: ${err.message}<small>Verifica que el Bluetooth esté activo.</small>`);
+        }
+        addLog('error', `Beacon error: ${err.message}`);
+    }
+}
+</script>
+
+</body>
+</html>

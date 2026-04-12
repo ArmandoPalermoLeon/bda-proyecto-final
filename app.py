@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify
 from functools import wraps
 from dotenv import load_dotenv
 from datetime import date
@@ -11,6 +11,41 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "clave-secreta-dev")
+
+
+# ── Emergency alert context processor ─────────────────────────────────────────
+@app.context_processor
+def inject_alertas_criticas():
+    from datetime import datetime
+    criticas = []
+    if session.get("admin") or session.get("medico"):
+        try:
+            rows = db.query("""
+                SELECT a.id_alerta,
+                       COALESCE(p.nombre || ' ' || p.apellido_p, 'Zona') AS nombre_paciente,
+                       a.fecha_hora,
+                       a.tipo_alerta
+                FROM alertas a
+                LEFT JOIN pacientes p ON a.id_paciente = p.id_paciente
+                WHERE a.estatus = 'Activa'
+                  AND a.tipo_alerta IN ('Salida de Zona', 'Botón SOS', 'Caída')
+                ORDER BY a.fecha_hora DESC
+            """)
+            now = datetime.now()
+            for r in rows:
+                delta = now - r["fecha_hora"]
+                mins = int(delta.total_seconds() / 60)
+                if mins < 1:
+                    tiempo = "hace un momento"
+                elif mins < 60:
+                    tiempo = f"hace {mins} minuto{'s' if mins != 1 else ''}"
+                else:
+                    hrs = mins // 60
+                    tiempo = f"hace {hrs} hora{'s' if hrs != 1 else ''}"
+                criticas.append({**dict(r), "tiempo": tiempo})
+        except Exception:
+            pass
+    return dict(alertas_criticas=criticas)
 
 
 # ── Auth decorators ────────────────────────────────────────────────────────────
@@ -138,6 +173,7 @@ def dashboard():
                 FROM asignacion_kit ak
                 JOIN sede_pacientes sp ON ak.id_paciente = sp.id_paciente
                 WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL
+                  AND ak.fecha_fin IS NULL
             """, (sid,)) or 0,
             "alertas_activas": db.scalar("""
                 SELECT COUNT(*) FROM alertas a
@@ -373,7 +409,7 @@ def pacientes_historial(id):
                TO_CHAR(ak.fecha_entrega, 'YYYY-MM-DD') AS fecha_entrega
         FROM asignacion_kit ak
         JOIN dispositivos gps ON ak.id_dispositivo_gps = gps.id_dispositivo
-        WHERE ak.id_paciente = %s
+        WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
         LIMIT 1
     """, (id,))
 
@@ -448,6 +484,25 @@ def pacientes_historial(id):
         visitas=visitas,
         entregas=entregas,
     )
+
+
+@app.route("/pacientes/<int:id>/reporte-pdf")
+@admin_requerido
+def pacientes_reporte_pdf(id):
+    from pdf_report import generate_patient_report
+    from flask import send_file
+    paciente = db.one(
+        "SELECT nombre, apellido_p FROM pacientes WHERE id_paciente = %s", (id,)
+    )
+    if not paciente:
+        flash("Paciente no encontrado.", "error")
+        return redirect(url_for("pacientes_lista"))
+    buf = generate_patient_report(id)
+    nombre_archivo = (
+        f"reporte_{paciente['nombre'].lower()}_{paciente['apellido_p'].lower()}_{id}.pdf"
+    )
+    return send_file(buf, mimetype="application/pdf",
+                     as_attachment=True, download_name=nombre_archivo)
 
 
 @app.route("/pacientes/<int:id>/transferir-sede", methods=["POST"])
@@ -846,7 +901,7 @@ def dispositivos():
                COALESCE(s.nombre_sede, '—') AS nombre_sucursal
         FROM dispositivos d
         LEFT JOIN asignacion_kit ak
-               ON d.id_dispositivo = ak.id_dispositivo_gps
+               ON d.id_dispositivo = ak.id_dispositivo_gps AND ak.fecha_fin IS NULL
         LEFT JOIN pacientes p ON ak.id_paciente = p.id_paciente
         LEFT JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
                                    AND sp.fecha_salida IS NULL
@@ -1692,14 +1747,14 @@ def portal_paciente(id):
     """, (id,))
 
     # ── Last GPS reading (PostgreSQL lecturas_gps) ───────────────────────────
-    # NOTE: will be replaced by MongoDB gps_events query when GPS ingest is live
     ultima_gps = db.one("""
         SELECT lg.latitud, lg.longitud, lg.nivel_bateria,
                TO_CHAR(lg.fecha_hora, 'YYYY-MM-DD') AS fecha,
-               TO_CHAR(lg.fecha_hora, 'HH24:MI')    AS hora
+               TO_CHAR(lg.fecha_hora, 'HH24:MI')    AS hora,
+               lg.fecha_hora AS ts
         FROM lecturas_gps lg
         JOIN asignacion_kit ak ON lg.id_dispositivo = ak.id_dispositivo_gps
-        WHERE ak.id_paciente = %s
+        WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
         ORDER BY lg.fecha_hora DESC
         LIMIT 1
     """, (id,))
@@ -1716,6 +1771,7 @@ def portal_paciente(id):
 
     # Inside-zone check via Haversine (no PostGIS required for display)
     dentro_zona = False
+    nombre_zona_actual = None
     if ultima_gps and zonas_seguras:
         for z in zonas_seguras:
             if _haversine_m(
@@ -1723,7 +1779,61 @@ def portal_paciente(id):
                 z["latitud_centro"],    z["longitud_centro"]
             ) <= float(z["radio_metros"]):
                 dentro_zona = True
+                nombre_zona_actual = z["nombre_zona"]
                 break
+
+    # ── Status banner: most recent event across all sources ──────────────────
+    from datetime import datetime as _dt
+    now_dt = _dt.now()
+
+    def _t_rel(ts):
+        if ts is None:
+            return None
+        mins = int((now_dt - ts).total_seconds() / 60)
+        if mins < 1:
+            return "hace un momento"
+        if mins < 60:
+            return f"hace {mins} minuto{'s' if mins != 1 else ''}"
+        hrs = mins // 60
+        if hrs < 24:
+            return f"hace {hrs} hora{'s' if hrs != 1 else ''}"
+        dias = hrs // 24
+        return f"hace {dias} día{'s' if dias != 1 else ''}"
+
+    tiempo_gps = _t_rel(ultima_gps["ts"]) if ultima_gps else None
+
+    ultima_actividad_ts = db.scalar("""
+        SELECT MAX(ts) FROM (
+            SELECT lg.fecha_hora AS ts
+            FROM lecturas_gps lg
+            JOIN asignacion_kit ak ON lg.id_dispositivo = ak.id_dispositivo_gps
+            WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
+            UNION ALL
+            SELECT ln.fecha_hora FROM lecturas_nfc ln
+            JOIN recetas r ON ln.id_receta = r.id_receta
+            WHERE r.id_paciente = %s
+            UNION ALL
+            SELECT a.fecha_hora FROM alertas a WHERE a.id_paciente = %s
+        ) ev
+    """, (id, id, id))
+
+    alerta_critica = db.one("""
+        SELECT a.tipo_alerta, a.fecha_hora
+        FROM alertas a
+        WHERE a.id_paciente = %s AND a.estatus = 'Activa'
+          AND a.tipo_alerta IN ('Salida de Zona', 'Botón SOS')
+        ORDER BY a.fecha_hora DESC LIMIT 1
+    """, (id,))
+
+    if alerta_critica:
+        estado_banner = 'critica'
+    elif ultima_actividad_ts is None or (now_dt - ultima_actividad_ts).total_seconds() > 7200:
+        estado_banner = 'sin_datos'
+    else:
+        estado_banner = 'ok'
+
+    tiempo_actividad = _t_rel(ultima_actividad_ts)
+    tiempo_alerta_critica = _t_rel(alerta_critica["fecha_hora"]) if alerta_critica else None
 
     # ── Alerts ───────────────────────────────────────────────────────────────
     alertas_activas = db.query("""
@@ -1746,15 +1856,20 @@ def portal_paciente(id):
         ORDER BY a.fecha_hora DESC
     """, (id,))
 
-    # ── Medications (all active recetas — recetas has no estado column) ──────
+    # ── Medications (active recetas only, with today's NFC status) ───────────
     medicamentos = db.query("""
         SELECT m.nombre_medicamento, rm.dosis, rm.frecuencia_horas,
-               TO_CHAR(r.fecha, 'YYYY-MM-DD') AS fecha_receta
+               EXISTS (
+                   SELECT 1 FROM lecturas_nfc ln
+                   WHERE ln.id_receta = r.id_receta
+                     AND ln.fecha_hora::DATE = CURRENT_DATE
+                     AND ln.resultado = 'Exitosa'
+               ) AS tomada_hoy
         FROM recetas r
         JOIN receta_medicamentos rm ON r.id_receta = rm.id_receta
-        JOIN medicamentos m         ON rm.GTIN     = m.GTIN
-        WHERE r.id_paciente = %s
-        ORDER BY r.fecha DESC
+        JOIN medicamentos m         ON rm.gtin     = m.gtin
+        WHERE r.id_paciente = %s AND r.estado = 'Activa'
+        ORDER BY m.nombre_medicamento
     """, (id,))
 
     # NFC adherence today
@@ -1807,7 +1922,42 @@ def portal_paciente(id):
         medicamentos_total=len(medicamentos),
         visitas=visitas,
         ultima_ronda=ultima_ronda,
+        estado_banner=estado_banner,
+        tiempo_actividad=tiempo_actividad,
+        alerta_critica=alerta_critica,
+        tiempo_alerta_critica=tiempo_alerta_critica,
+        nombre_zona_actual=nombre_zona_actual,
+        tiempo_gps=tiempo_gps,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CAREGIVER WEBAPP + IoT API — commented out, not yet active
+# Uncomment when the caregiver scanner webapp and NFC/Beacon endpoints are ready
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# @app.route("/cuidador/escanear")
+# @admin_requerido
+# def cuidador_escanear():
+#     return render_template("cuidador/escanear.html")
+#
+#
+# _IOT_KEY = "alz-dev-2026"
+#
+# def _iot_auth():
+#     if session.get("admin") or session.get("medico"):
+#         return True
+#     return request.headers.get("X-AlzMonitor-Key", "") == _IOT_KEY
+#
+#
+# @app.route("/api/nfc/lectura", methods=["POST"])
+# def api_nfc_lectura():
+#     ...
+#
+#
+# @app.route("/api/beacon/deteccion", methods=["POST"])
+# def api_beacon_deteccion():
+#     ...
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
