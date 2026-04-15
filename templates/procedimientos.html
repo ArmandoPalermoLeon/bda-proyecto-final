@@ -219,7 +219,7 @@
 {# ─── SP-10 ────────────────────────────────────────────────────────────────── #}
 {% call sp_card("10","#FEF3C7","#92400E","sp_nfc_asignar",
     "Asigna (o reasigna) un dispositivo NFC directamente a un paciente en asignacion_nfc. Cierra cualquier asignacion activa previa del paciente o del dispositivo antes de crear la nueva.",
-    "asignacion_nfc", "Boton Asignar NFC en historial del paciente", url_for('pacientes'),
+    "asignacion_nfc", "Boton Asignar NFC en historial del paciente", url_for('pacientes_lista'),
     "CALL sp_nfc_asignar(7, 3);") %}
 {{ params_table(
     pr("p_id_paciente","INTEGER","Paciente receptor") ~
