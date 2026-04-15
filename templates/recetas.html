@@ -8,9 +8,15 @@
 
 <div class="section-header">
     <div>
-        <div class="section-title">Recetas activas</div>
+        <div class="section-title">Recetas</div>
         <div class="section-sub">{{ recetas | length }} prescripcion(es) — adherencia NFC en tiempo real</div>
     </div>
+    <a href="{{ url_for('recetas_nueva') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Nueva receta
+    </a>
 </div>
 
 <div class="card">
@@ -22,6 +28,7 @@
                     <th>Paciente</th>
                     <th>Sede</th>
                     <th>Fecha</th>
+                    <th>Estado</th>
                     <th>Medicamentos</th>
                     <th>NFC vinculado</th>
                     <th>Adherencia hoy</th>
@@ -45,6 +52,14 @@
                         </td>
 
                         <td style="color:#64748B; font-variant-numeric:tabular-nums; font-size:12px;">{{ r.fecha }}</td>
+
+                        <td>
+                            {% if r.estado == 'Activa' %}
+                            <span class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0;">Activa</span>
+                            {% else %}
+                            <span class="badge" style="background:#F8FAFC; color:#64748B; border:1px solid #E2E8F0;">Cerrada</span>
+                            {% endif %}
+                        </td>
 
                         <td>
                             <div style="display:flex; align-items:center; gap:6px;">

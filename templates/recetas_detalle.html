@@ -6,12 +6,28 @@
 
 {% block content %}
 
-<a href="{{ url_for('recetas_lista') }}" class="btn btn-secondary btn-sm" style="margin-bottom:20px; display:inline-flex;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
-        <polyline points="15 18 9 12 15 6"/>
-    </svg>
-    Volver a recetas
-</a>
+<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+    <a href="{{ url_for('recetas_lista') }}" class="btn btn-secondary btn-sm" style="display:inline-flex;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+            <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Volver a recetas
+    </a>
+    {% if receta.estado == 'Activa' %}
+    <form method="POST" action="{{ url_for('recetas_cerrar', id=receta.id_receta) }}"
+          onsubmit="return confirm('¿Cerrar esta receta? Se terminarán todos los vínculos NFC activos.')">
+        <button type="submit" class="btn btn-sm"
+                style="background:#FFF1F2; color:#BE123C; border:1px solid #FECDD3; font-size:12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            Cerrar receta
+        </button>
+    </form>
+    {% endif %}
+</div>
 
 <!-- Encabezado -->
 <div class="card" style="margin-bottom:18px;">
@@ -19,9 +35,14 @@
         <div>
             <div style="font-size:11px; font-weight:700; color:#94A3B8; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Paciente</div>
             <div style="font-size:20px; font-weight:800; color:#0F172A; letter-spacing:-0.3px;">{{ receta.nombre_paciente }}</div>
-            <div style="margin-top:6px; display:flex; align-items:center; gap:10px;">
+            <div style="margin-top:6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <span class="badge" style="background:#E0F2FE; color:#0369A1;">{{ receta.nombre_sede }}</span>
                 <span style="font-size:12px; color:#94A3B8;">Emitida el {{ receta.fecha }}</span>
+                {% if receta.estado == 'Activa' %}
+                <span class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0;">Activa</span>
+                {% else %}
+                <span class="badge" style="background:#F8FAFC; color:#64748B; border:1px solid #E2E8F0;">Cerrada</span>
+                {% endif %}
             </div>
         </div>
         {% if nfc %}
@@ -48,7 +69,73 @@
                 <div class="card-title">Medicamentos prescritos</div>
                 <div style="font-size:11px; color:#94A3B8; margin-top:2px;">{{ medicamentos | length }} ítem(s)</div>
             </div>
+            {% if receta.estado == 'Activa' and medicamentos_disponibles %}
+            <button onclick="document.getElementById('form-agregar-med').style.display = document.getElementById('form-agregar-med').style.display === 'none' ? 'block' : 'none'"
+                    class="btn btn-secondary btn-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Agregar
+            </button>
+            {% endif %}
         </div>
+
+        <!-- Form agregar medicamento -->
+        {% if receta.estado == 'Activa' and medicamentos_disponibles %}
+        <div id="form-agregar-med" style="display:none; padding:16px 20px; border-bottom:1px solid #F1F5F9; background:#FAFCFF;">
+            <div style="font-size:12px; font-weight:700; color:#0F172A; margin-bottom:12px;">Agregar medicamento</div>
+            <form method="POST" action="{{ url_for('recetas_agregar_medicamento', id=receta.id_receta) }}"
+                  style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                <div>
+                    <label class="form-label">Medicamento</label>
+                    <select name="gtin" class="form-control" required style="min-width:200px;">
+                        <option value="">— Selecciona —</option>
+                        {% for med in medicamentos_disponibles %}
+                        <option value="{{ med.gtin }}">{{ med.nombre_medicamento }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Dosis</label>
+                    <input type="text" name="dosis" class="form-control" placeholder="Ej. 10mg" required style="width:110px;">
+                </div>
+                <div>
+                    <label class="form-label">Frecuencia (horas)</label>
+                    <input type="number" name="frecuencia_horas" class="form-control" placeholder="8" min="1" required style="width:100px;">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="document.getElementById('form-agregar-med').style.display='none'">Cancelar</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Form editar medicamento (oculto, poblado por JS) -->
+        {% if receta.estado == 'Activa' %}
+        <div id="form-editar-med" style="display:none; padding:16px 20px; border-bottom:1px solid #F1F5F9; background:#FFFBEB;">
+            <div style="font-size:12px; font-weight:700; color:#0F172A; margin-bottom:12px;">Editar medicamento</div>
+            <form method="POST" action="{{ url_for('recetas_actualizar_medicamento', id=receta.id_receta) }}"
+                  style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                <input type="hidden" name="id_detalle" id="edit-id-detalle">
+                <div>
+                    <label class="form-label">Nombre</label>
+                    <input type="text" id="edit-nombre" class="form-control" disabled style="width:180px; background:#F1F5F9;">
+                </div>
+                <div>
+                    <label class="form-label">Dosis</label>
+                    <input type="text" name="dosis" id="edit-dosis" class="form-control" required style="width:110px;">
+                </div>
+                <div>
+                    <label class="form-label">Frecuencia (horas)</label>
+                    <input type="number" name="frecuencia_horas" id="edit-frecuencia" class="form-control" min="1" required style="width:100px;">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Guardar cambios</button>
+                <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="document.getElementById('form-editar-med').style.display='none'">Cancelar</button>
+            </form>
+        </div>
+        {% endif %}
+
         {% if medicamentos %}
         <div style="padding:0;">
             {% for m in medicamentos %}
@@ -56,14 +143,28 @@
                 <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
                     <div style="flex:1;">
                         <div style="font-size:13px; font-weight:700; color:#0F172A;">{{ m.nombre_medicamento }}</div>
-                        <div style="margin-top:4px; display:flex; gap:10px; flex-wrap:wrap;">
+                        <div style="margin-top:4px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                             <span style="font-size:11px; background:#F0F9FF; color:#0369A1; font-weight:600;
                                          padding:2px 9px; border-radius:6px; border:1px solid #BAE6FD;">
                                 {{ m.dosis }}
                             </span>
-                            <span style="font-size:11px; color:#64748B;">
-                                Cada {{ m.frecuencia_horas }}h
-                            </span>
+                            <span style="font-size:11px; color:#64748B;">Cada {{ m.frecuencia_horas }}h</span>
+                            {% if receta.estado == 'Activa' %}
+                            <button type="button"
+                                    onclick="editarMed({{ m.id_detalle }}, '{{ m.nombre_medicamento }}', '{{ m.dosis }}', {{ m.frecuencia_horas }})"
+                                    style="background:none; border:none; cursor:pointer; font-size:11px; color:#0E7490; font-weight:600; padding:0;">
+                                Editar
+                            </button>
+                            <form method="POST" action="{{ url_for('recetas_quitar_medicamento', id=receta.id_receta) }}"
+                                  style="display:inline;"
+                                  onsubmit="return confirm('¿Quitar {{ m.nombre_medicamento }} de esta receta?')">
+                                <input type="hidden" name="id_detalle" value="{{ m.id_detalle }}">
+                                <button type="submit"
+                                        style="background:none; border:none; cursor:pointer; font-size:11px; color:#BE123C; font-weight:600; padding:0;">
+                                    Quitar
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
                     </div>
                     <div style="text-align:right; flex-shrink:0;">
@@ -84,7 +185,11 @@
         </div>
         {% else %}
         <div style="text-align:center; padding:32px; color:#94A3B8; font-size:13px;">
+            {% if receta.estado == 'Activa' %}
+            No hay medicamentos aún. Usa el botón "Agregar" para añadir el primero.
+            {% else %}
             No hay medicamentos en esta receta.
+            {% endif %}
         </div>
         {% endif %}
     </div>
@@ -137,4 +242,18 @@
 
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editarMed(idDetalle, nombre, dosis, frecuencia) {
+    document.getElementById('edit-id-detalle').value = idDetalle;
+    document.getElementById('edit-nombre').value     = nombre;
+    document.getElementById('edit-dosis').value      = dosis;
+    document.getElementById('edit-frecuencia').value = frecuencia;
+    document.getElementById('form-agregar-med').style.display = 'none';
+    document.getElementById('form-editar-med').style.display  = 'block';
+    document.getElementById('form-editar-med').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
 {% endblock %}

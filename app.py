@@ -1530,6 +1530,7 @@ def recetas_lista():
     recetas = db.query("""
         SELECT
             r.id_receta,
+            r.estado,
             TO_CHAR(r.fecha, 'DD/MM/YYYY') AS fecha,
             p.id_paciente,
             p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS nombre_paciente,
@@ -1558,18 +1559,44 @@ def recetas_lista():
         LEFT JOIN lecturas_nfc ln
             ON ln.id_receta = r.id_receta
         WHERE p.id_estado != 3
-        GROUP BY r.id_receta, r.fecha, p.id_paciente, p.nombre, p.apellido_p,
+        GROUP BY r.id_receta, r.estado, r.fecha, p.id_paciente, p.nombre, p.apellido_p,
                  p.apellido_m, s.nombre_sede, d.id_serial, rn.fecha_inicio_gestion
         ORDER BY r.fecha DESC
     """)
     return render_template("recetas.html", recetas=recetas)
 
 
+@app.route("/recetas/nueva", methods=["GET", "POST"])
+@admin_requerido
+def recetas_nueva():
+    pacientes = db.query("""
+        SELECT p.id_paciente,
+               p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS nombre_completo
+        FROM pacientes p
+        WHERE p.id_estado != 3
+        ORDER BY p.apellido_p, p.nombre
+    """)
+    if request.method == "POST":
+        try:
+            id_paciente = int(request.form["id_paciente"])
+            fecha       = request.form["fecha"]
+            next_id     = db.scalar(
+                "SELECT COALESCE(MAX(id_receta), 0) + 1 FROM recetas"
+            )
+            db.execute("CALL sp_receta_crear(%s, %s, %s)", (next_id, id_paciente, fecha))
+            flash("Receta creada correctamente.", "success")
+            return redirect(url_for("recetas_detalle", id=next_id))
+        except Exception as e:
+            flash(f"Error al crear receta: {e}", "error")
+    from datetime import date
+    return render_template("recetas_form.html", pacientes=pacientes, today=date.today().isoformat())
+
+
 @app.route("/recetas/<int:id>")
 @admin_requerido
 def recetas_detalle(id):
     receta = db.one("""
-        SELECT r.id_receta, TO_CHAR(r.fecha, 'DD/MM/YYYY') AS fecha,
+        SELECT r.id_receta, r.estado, TO_CHAR(r.fecha, 'DD/MM/YYYY') AS fecha,
                p.id_paciente,
                p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS nombre_paciente,
                COALESCE(s.nombre_sede, '—') AS nombre_sede
@@ -1583,7 +1610,7 @@ def recetas_detalle(id):
         abort(404)
 
     medicamentos = db.query("""
-        SELECT rm.id_detalle, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas,
+        SELECT rm.id_detalle, rm.gtin, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas,
                COUNT(ln.id_lectura_nfc)                                     AS total_lecturas,
                COUNT(ln.id_lectura_nfc) FILTER (WHERE ln.resultado='Exitosa') AS exitosas,
                COUNT(ln.id_lectura_nfc)
@@ -1596,8 +1623,16 @@ def recetas_detalle(id):
             ON ln.id_receta = rm.id_receta
            AND ln.id_dispositivo = rn.id_dispositivo
         WHERE rm.id_receta = %s
-        GROUP BY rm.id_detalle, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas
+        GROUP BY rm.id_detalle, rm.gtin, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas
         ORDER BY m.nombre_medicamento
+    """, (id,))
+
+    medicamentos_disponibles = db.query("""
+        SELECT gtin, nombre_medicamento FROM medicamentos
+        WHERE gtin NOT IN (
+            SELECT gtin FROM receta_medicamentos WHERE id_receta = %s
+        )
+        ORDER BY nombre_medicamento
     """, (id,))
 
     nfc = db.one("""
@@ -1622,8 +1657,72 @@ def recetas_detalle(id):
     return render_template("recetas_detalle.html",
                            receta=receta,
                            medicamentos=medicamentos,
+                           medicamentos_disponibles=medicamentos_disponibles,
                            nfc=nfc,
                            lecturas=lecturas)
+
+
+@app.route("/recetas/<int:id>/agregar-medicamento", methods=["POST"])
+@admin_requerido
+def recetas_agregar_medicamento(id):
+    try:
+        gtin             = request.form["gtin"]
+        dosis            = request.form["dosis"].strip()
+        frecuencia_horas = int(request.form["frecuencia_horas"])
+        next_det = db.scalar(
+            "SELECT COALESCE(MAX(id_detalle), 0) + 1 FROM receta_medicamentos"
+        )
+        db.execute(
+            "CALL sp_receta_agregar_medicamento(%s, %s, %s, %s, %s)",
+            (next_det, id, gtin, dosis, frecuencia_horas)
+        )
+        flash("Medicamento agregado correctamente.", "success")
+    except Exception as e:
+        flash(f"Error al agregar medicamento: {e}", "error")
+    return redirect(url_for("recetas_detalle", id=id))
+
+
+@app.route("/recetas/<int:id>/actualizar-medicamento", methods=["POST"])
+@admin_requerido
+def recetas_actualizar_medicamento(id):
+    try:
+        id_detalle       = int(request.form["id_detalle"])
+        dosis            = request.form["dosis"].strip()
+        frecuencia_horas = int(request.form["frecuencia_horas"])
+        db.execute(
+            "CALL sp_receta_actualizar_medicamento(%s, %s, %s, %s)",
+            (id_detalle, id, dosis, frecuencia_horas)
+        )
+        flash("Medicamento actualizado correctamente.", "success")
+    except Exception as e:
+        flash(f"Error al actualizar medicamento: {e}", "error")
+    return redirect(url_for("recetas_detalle", id=id))
+
+
+@app.route("/recetas/<int:id>/quitar-medicamento", methods=["POST"])
+@admin_requerido
+def recetas_quitar_medicamento(id):
+    try:
+        id_detalle = int(request.form["id_detalle"])
+        db.execute(
+            "CALL sp_receta_quitar_medicamento(%s, %s)",
+            (id_detalle, id)
+        )
+        flash("Medicamento eliminado de la receta.", "success")
+    except Exception as e:
+        flash(f"Error al quitar medicamento: {e}", "error")
+    return redirect(url_for("recetas_detalle", id=id))
+
+
+@app.route("/recetas/<int:id>/cerrar", methods=["POST"])
+@admin_requerido
+def recetas_cerrar(id):
+    try:
+        db.execute("CALL sp_receta_cerrar(%s, CURRENT_DATE)", (id,))
+        flash("Receta cerrada correctamente.", "success")
+    except Exception as e:
+        flash(f"Error al cerrar receta: {e}", "error")
+    return redirect(url_for("recetas_detalle", id=id))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
