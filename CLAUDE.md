@@ -93,6 +93,7 @@ Full integration plan is in `DEVICES.md`. **GPS is the central safety mechanism.
 | `finalqueries.sql` | Complete | Advanced analytical queries — **do not re-fix** |
 | `FinalStoredProcedures.sql` | Old ref | Earlier SP design — superseded by RecetasProcedures.sql |
 | `queries.sql` | Old ref | Earlier query drafts |
+| `Guia_Procedimientos_Almacenados.md` | Docs | Full usage guide for all 10 SPs — parameters, preconditions, error messages, SQL examples, lifecycle flow |
 
 ## Schema — ProyectoFinalDDL.sql
 
@@ -133,7 +134,10 @@ BLOQUE 5 = RECETAS Y MEDICACIÓN. BLOQUE 6 = EVENTOS Y ALERTAS. BLOQUE 11 = trig
 
 Re-apply: `psql -U palermingoat -d alzheimer -f RecetasProcedures.sql`
 
+> **Note:** `sp_nfc_asignar` was found missing from the live DB on 2026-04-13 (likely truncated on a prior run). It was applied directly via psql inline SQL. All 10 SPs are confirmed present as of that date. If ever in doubt, re-apply the full file above.
+
 Full interactive guide with parameters and CALL syntax: `GET /procedimientos` (admin only).
+Full offline guide with SQL examples and lifecycle flow: `Guia_Procedimientos_Almacenados.md`.
 
 ### ProcedimientosAlmacenados.sql — academic reference
 All 10 SPs rewritten following `CREATE PROCEDURE` convention (no `OR REPLACE`, explicit `IN` params, `BEGIN; CALL …; COMMIT;` blocks). Also adds 3 REFCURSOR read-only procedures for documentation (not in live DB):
