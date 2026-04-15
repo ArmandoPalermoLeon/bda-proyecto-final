@@ -320,6 +320,52 @@ $$;
 
 
 -- =============================================================================
+-- BLOQUE 5: ASIGNACIÓN DIRECTA NFC ↔ PACIENTE
+-- =============================================================================
+
+-- Asigna (o reasigna) un dispositivo NFC a un paciente.
+-- Cierra cualquier asignación activa previa del paciente o del dispositivo,
+-- luego abre una nueva en asignacion_nfc.
+CREATE OR REPLACE PROCEDURE sp_nfc_asignar(
+    p_id_paciente    INTEGER,
+    p_id_dispositivo INTEGER
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    -- Verificar que el paciente existe y no está dado de baja
+    IF NOT EXISTS (
+        SELECT 1 FROM pacientes
+        WHERE id_paciente = p_id_paciente AND id_estado != 3
+    ) THEN
+        RAISE EXCEPTION 'Paciente % no encontrado o dado de baja.', p_id_paciente;
+    END IF;
+
+    -- Verificar que el dispositivo es de tipo NFC y existe
+    IF NOT EXISTS (
+        SELECT 1 FROM dispositivos
+        WHERE id_dispositivo = p_id_dispositivo AND tipo = 'NFC'
+    ) THEN
+        RAISE EXCEPTION 'Dispositivo % no es de tipo NFC o no existe.', p_id_dispositivo;
+    END IF;
+
+    -- Cerrar asignación activa del paciente (si tiene una)
+    UPDATE asignacion_nfc
+    SET fecha_fin = CURRENT_DATE
+    WHERE id_paciente = p_id_paciente AND fecha_fin IS NULL;
+
+    -- Cerrar asignación activa del dispositivo (si está asignado a otro paciente)
+    UPDATE asignacion_nfc
+    SET fecha_fin = CURRENT_DATE
+    WHERE id_dispositivo = p_id_dispositivo AND fecha_fin IS NULL;
+
+    -- Crear nueva asignación
+    INSERT INTO asignacion_nfc (id_paciente, id_dispositivo, fecha_inicio)
+    VALUES (p_id_paciente, p_id_dispositivo, CURRENT_DATE);
+END;
+$$;
+
+
+-- =============================================================================
 -- FIN RecetasProcedures.sql
 -- Para verificar que los procedures se cargaron correctamente:
 --   SELECT proname FROM pg_proc WHERE proname LIKE 'sp_receta%' OR proname LIKE 'sp_nfc%';

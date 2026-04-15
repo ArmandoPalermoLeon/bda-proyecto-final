@@ -2,83 +2,271 @@
 
 {% block title %}Iniciar sesión — Portal Familiar{% endblock %}
 
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(150deg, #D0EAF5 0%, #BAE6FD 40%, #E0F2FE 100%);
+        min-height: 100vh;
+    }
+
+    /* ── Two-column login card ─────────────────────────────── */
+    .login-wrap {
+        display: flex;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 8px 48px rgba(14,116,144,.18), 0 2px 8px rgba(14,116,144,.10);
+        background: #fff;
+        border: 1px solid #C7E6F4;
+        margin-top: 12px;
+    }
+
+    /* ── Left brand panel ──────────────────────────────────── */
+    .login-brand {
+        flex: 0 0 240px;
+        background: linear-gradient(145deg, #071C27 0%, #0A4F66 55%, #0E7490 100%);
+        padding: 40px 28px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+    }
+    /* Decorative orbs */
+    .login-brand::before {
+        content: '';
+        position: absolute;
+        width: 220px; height: 220px; border-radius: 50%;
+        background: rgba(255,255,255,.04);
+        top: -70px; left: -70px;
+        pointer-events: none;
+    }
+    .login-brand::after {
+        content: '';
+        position: absolute;
+        width: 160px; height: 160px; border-radius: 50%;
+        background: rgba(45,212,191,.07);
+        bottom: -50px; right: -50px;
+        pointer-events: none;
+    }
+
+    .login-brand-content { position: relative; z-index: 1; }
+
+    .login-feature {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+        margin-top: 18px;
+    }
+    .login-feature-icon {
+        width: 30px; height: 30px; border-radius: 8px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.12);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+    .login-feature-title {
+        font-size: 12px; font-weight: 700;
+        color: rgba(255,255,255,.95); margin-bottom: 2px;
+    }
+    .login-feature-text {
+        font-size: 11px; color: rgba(255,255,255,.55); line-height: 1.45;
+    }
+
+    /* ── Right form panel ──────────────────────────────────── */
+    .login-form-side {
+        flex: 1;
+        padding: 40px 36px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .login-input {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1.5px solid #D4E9F5;
+        border-radius: 10px;
+        font-size: 14px;
+        font-family: inherit;
+        color: #0F172A;
+        outline: none;
+        background: #FAFEFF;
+        transition: border-color .15s, box-shadow .15s;
+        display: block;
+    }
+    .login-input:focus {
+        border-color: #0E7490;
+        box-shadow: 0 0 0 3px rgba(14,116,144,.12);
+    }
+
+    .login-label {
+        display: block;
+        font-size: 11px; font-weight: 700;
+        color: #334155;
+        margin-bottom: 7px;
+        letter-spacing: .3px;
+        text-transform: uppercase;
+    }
+
+    .login-btn {
+        width: 100%;
+        padding: 13px;
+        font-size: 14px; font-weight: 700;
+        font-family: inherit;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        background: linear-gradient(135deg, #0A4F66, #0E7490);
+        color: #fff;
+        letter-spacing: .1px;
+        box-shadow: 0 4px 16px rgba(14,116,144,.30);
+        transition: opacity .12s, transform .12s, box-shadow .12s;
+    }
+    .login-btn:hover {
+        opacity: .92;
+        transform: translateY(-1px);
+        box-shadow: 0 7px 22px rgba(14,116,144,.38);
+    }
+    .login-btn:active { transform: translateY(0); }
+
+    /* ── Mobile: stack vertically ──────────────────────────── */
+    @media (max-width: 580px) {
+        .login-wrap { flex-direction: column; border-radius: 16px; }
+        .login-brand { flex: none; padding: 28px 24px 24px; }
+        .login-feature { margin-top: 14px; }
+        .login-form-side { padding: 28px 24px 32px; }
+    }
+
+    /* Flash messages above card */
+    .login-flash-wrap { margin-bottom: 12px; }
+</style>
+{% endblock %}
+
 {% block content %}
 
-<div style="max-width:380px; margin:48px auto 0;">
+<!-- Flash messages sit above the card (rendered by base before content block,
+     but we duplicate the block override so they render inside our layout scope) -->
 
-    <div style="text-align:center; margin-bottom:32px;">
-        <div style="width:60px; height:60px; border-radius:16px;
-                    background: linear-gradient(135deg, #0A4F66, #0E7490);
-                    display:flex; align-items:center; justify-content:center;
-                    margin:0 auto 16px; box-shadow:0 4px 16px rgba(14,116,144,.30);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="26" height="26">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-            </svg>
-        </div>
-        <div style="font-size:22px; font-weight:800; color:#0F172A; letter-spacing:-0.4px;">
-            Portal Familiar
-        </div>
-        <div style="font-size:13px; color:#64748B; margin-top:6px;">
-            Accede para ver el estado de tu familiar
-        </div>
-    </div>
+<div class="login-wrap">
 
-    <div class="pf-card">
-        <div class="pf-card-body" style="padding:28px;">
-            <form method="POST" action="{{ url_for('portal_login') }}">
+    <!-- ── Left: brand side ───────────────────────────────── -->
+    <div class="login-brand">
+        <div class="login-brand-content">
 
-                <div style="margin-bottom:18px;">
-                    <label style="display:block; font-size:12px; font-weight:700;
-                                  color:#334155; margin-bottom:7px; letter-spacing:.2px;">
-                        Correo electrónico
-                    </label>
-                    <input type="email" name="email" required
-                           placeholder="tu@correo.com"
-                           style="width:100%; padding:11px 14px; border:1.5px solid #D4E9F5;
-                                  border-radius:10px; font-size:14px; font-family:inherit;
-                                  color:#0F172A; outline:none; background:#FAFEFF;
-                                  transition:border-color .15s, box-shadow .15s;"
-                           onfocus="this.style.borderColor='#0E7490'; this.style.boxShadow='0 0 0 3px rgba(14,116,144,.12)'"
-                           onblur="this.style.borderColor='#D4E9F5'; this.style.boxShadow='none'">
+            <!-- Icon + name -->
+            <div style="width:50px; height:50px; border-radius:14px;
+                        background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.16);
+                        display:flex; align-items:center; justify-content:center; margin-bottom:18px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.88)" stroke-width="2" width="22" height="22">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+            </div>
+
+            <div style="font-size:19px; font-weight:800; color:#fff; letter-spacing:-.3px; margin-bottom:5px;">
+                AlzMonitor
+            </div>
+            <div style="font-size:11.5px; color:rgba(255,255,255,.55); line-height:1.55; margin-bottom:28px;">
+                Portal de acceso familiar para el seguimiento de pacientes con Alzheimer
+            </div>
+
+            <!-- Feature list -->
+            <div class="login-feature">
+                <div class="login-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" width="13" height="13">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
                 </div>
-
-                <div style="margin-bottom:24px;">
-                    <label style="display:block; font-size:12px; font-weight:700;
-                                  color:#334155; margin-bottom:7px; letter-spacing:.2px;">
-                        PIN de acceso
-                    </label>
-                    <input type="password" name="pin" required
-                           placeholder="••••"
-                           maxlength="20"
-                           style="width:100%; padding:11px 14px; border:1.5px solid #D4E9F5;
-                                  border-radius:10px; font-size:14px; font-family:inherit;
-                                  color:#0F172A; outline:none; background:#FAFEFF;
-                                  transition:border-color .15s, box-shadow .15s;"
-                           onfocus="this.style.borderColor='#0E7490'; this.style.boxShadow='0 0 0 3px rgba(14,116,144,.12)'"
-                           onblur="this.style.borderColor='#D4E9F5'; this.style.boxShadow='none'">
+                <div>
+                    <div class="login-feature-title">Estado en tiempo real</div>
+                    <div class="login-feature-text">Ubicación y actividad de tu familiar actualizada continuamente</div>
                 </div>
+            </div>
 
-                <button type="submit"
-                        style="width:100%; padding:12px; font-size:14px; font-weight:700;
-                               font-family:inherit; border:none; border-radius:10px; cursor:pointer;
-                               background: linear-gradient(135deg, #0A4F66, #0E7490);
-                               color:#fff; letter-spacing:.1px;
-                               box-shadow:0 3px 12px rgba(14,116,144,.28);
-                               transition:opacity .12s, box-shadow .12s;"
-                        onmouseenter="this.style.opacity='.92'; this.style.boxShadow='0 5px 18px rgba(14,116,144,.35)'"
-                        onmouseleave="this.style.opacity='1'; this.style.boxShadow='0 3px 12px rgba(14,116,144,.28)'">
-                    Entrar
-                </button>
+            <div class="login-feature">
+                <div class="login-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" width="13" height="13">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="login-feature-title">Medicación verificada</div>
+                    <div class="login-feature-text">Registro de adherencia por pulsera NFC</div>
+                </div>
+            </div>
 
-            </form>
+            <div class="login-feature">
+                <div class="login-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" width="13" height="13">
+                        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                        <line x1="6" y1="1" x2="6" y2="4"/>
+                        <line x1="10" y1="1" x2="10" y2="4"/>
+                        <line x1="14" y1="1" x2="14" y2="4"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="login-feature-title">Alertas inmediatas</div>
+                    <div class="login-feature-text">Notificaciones cuando el paciente sale de zona segura</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom trust line -->
+        <div class="login-brand-content" style="margin-top:32px; padding-top:18px; border-top:1px solid rgba(255,255,255,.10);">
+            <div style="font-size:10px; color:rgba(255,255,255,.35); letter-spacing:.6px; text-transform:uppercase;">
+                Acceso seguro · Datos protegidos
+            </div>
         </div>
     </div>
 
-    <div style="text-align:center; font-size:11px; color:#94A3B8; margin-top:18px; line-height:1.6;">
-        ¿Problemas para acceder? Contacta a la administración de la residencia.
-    </div>
+    <!-- ── Right: form side ───────────────────────────────── -->
+    <div class="login-form-side">
 
+        <!-- Header -->
+        <div style="margin-bottom:30px;">
+            <div style="font-size:21px; font-weight:800; color:#0F172A; letter-spacing:-.4px; margin-bottom:6px;">
+                Bienvenido/a
+            </div>
+            <div style="font-size:13px; color:#64748B; line-height:1.5;">
+                Ingresa tus credenciales para ver el estado de tu familiar
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" action="{{ url_for('portal_login') }}">
+
+            <div style="margin-bottom:18px;">
+                <label class="login-label">Correo electrónico</label>
+                <input type="email" name="email" required
+                       placeholder="tu@correo.com"
+                       class="login-input">
+            </div>
+
+            <div style="margin-bottom:28px;">
+                <label class="login-label">PIN de acceso</label>
+                <input type="password" name="pin" required
+                       placeholder="••••"
+                       maxlength="20"
+                       class="login-input">
+            </div>
+
+            <button type="submit" class="login-btn">
+                Entrar al portal
+            </button>
+
+        </form>
+
+        <!-- Help text -->
+        <div style="margin-top:20px; text-align:center; font-size:11px; color:#94A3B8; line-height:1.7;">
+            ¿Problemas para acceder?<br>
+            Contacta a la administración de la residencia.
+        </div>
+
+    </div>
 </div>
 
 {% endblock %}

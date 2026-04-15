@@ -7,7 +7,7 @@
 {% block content %}
 
 <!-- Header con KPIs rápidos -->
-<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
 
     <div style="background:#fff; border-radius:12px; border:1px solid #E0F2FE;
                 padding:16px 20px; display:flex; align-items:center; gap:14px;
@@ -104,7 +104,7 @@
         5 consultas
     </span>
 </div>
-<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
 
     {% set rt_reports = [
         ('Q1', 'Alertas activas con origen IoT', 'Pacientes en alerta, tipo de evento y regla que la disparó. JOIN con alerta_evento_origen.', '#E11D48', '#FFF1F2', '#FECDD3'),
@@ -128,7 +128,7 @@
     {% endfor %}
 
 </div>
-<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
     {% for q, titulo, desc, color, bg, border in rt_reports[3:] %}
     <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
                 box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
@@ -155,7 +155,7 @@
         3 consultas
     </span>
 </div>
-<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px;">
 
     {% set gps_reports = [
         ('Q6', 'Ranking de riesgo — salidas de zona', 'Pacientes ordenados por número de salidas de zona. ORDER BY total_salidas_zona DESC.', '#0E7490', '#E0F2FE', '#BAE6FD'),
@@ -190,7 +190,7 @@
         2 consultas
     </span>
 </div>
-<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
 
     <div style="background:#fff; border-radius:14px; border:1px solid #DDD6FE; padding:20px;
                 box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
@@ -232,7 +232,7 @@
         7 consultas
     </span>
 </div>
-<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:14px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:14px;">
 
     {% set analytic_reports = [
         ('Q13', 'Frecuencia de alertas por tipo', 'COUNT con porcentaje del total. Identifica el tipo de alerta más frecuente en el sistema.', '#059669', '#ECFDF5', '#A7F3D0'),
@@ -258,7 +258,7 @@
     {% endfor %}
 
 </div>
-<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:14px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:14px;">
     {% for q, titulo, desc, color, bg, border in analytic_reports[3:5] %}
     <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
                 box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
@@ -274,7 +274,7 @@
     </div>
     {% endfor %}
 </div>
-<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:28px;">
     {% for q, titulo, desc, color, bg, border in analytic_reports[5:] %}
     <div style="background:#fff; border-radius:14px; border:1px solid {{ border }}; padding:20px;
                 box-shadow:0 1px 4px rgba(15,23,42,0.04); position:relative; overflow:hidden;">
@@ -293,7 +293,7 @@
 
 
 <!-- ── Sección 5: Farmacia & Operaciones ── -->
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+<div class="mob-stack" style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
 
     <div>
         <div class="section-header" style="margin-bottom:14px;">

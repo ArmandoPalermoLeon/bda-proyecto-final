@@ -1835,3 +1835,229 @@ body.has-emergency {
 .sidebar--emergency {
     animation: sidebar-emergency-pulse 2s ease-in-out infinite;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE — hamburger + collapsible sidebar
+   Breakpoint: < 900px
+═══════════════════════════════════════════════════════════ */
+
+/* Hamburger button — hidden on desktop */
+.hamburger-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    border: 1px solid #E2E8F0;
+    background: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .12s, border-color .12s;
+    margin-right: 12px;
+}
+.hamburger-btn:hover { background: #F8FAFC; border-color: #94A3B8; }
+.hamburger-btn svg   { display: block; }
+
+/* Overlay that covers main content when sidebar is open */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 28, 39, 0.55);
+    z-index: 150;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+.sidebar-overlay.active { display: block; }
+
+@media (max-width: 899px) {
+
+    /* Show hamburger */
+    .hamburger-btn { display: flex; }
+
+    /* Sidebar slides in from the left as an overlay */
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 200;
+        transform: translateX(-260px);
+        transition: transform 0.24s cubic-bezier(.4,0,.2,1),
+                    box-shadow 0.24s;
+        box-shadow: none;
+    }
+    .sidebar--open {
+        transform: translateX(0);
+        box-shadow: 4px 0 40px rgba(0,0,0,0.35);
+    }
+
+    /* Main area takes full width */
+    .main-wrapper { width: 100%; }
+
+    /* Tighter topbar on mobile */
+    .topbar {
+        padding: 0 16px;
+    }
+    .topbar-status { display: none; } /* hide "Monitoreo activo" pill — too cramped */
+
+    /* Tighter content padding */
+    .content        { padding: 20px 16px; }
+    .flash-container { padding: 12px 16px 0; }
+
+    /* stat grids: override any inline grid-template-columns */
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px; }
+
+    /* 2-col form grid → 1-col */
+    .form-grid { grid-template-columns: 1fr; }
+
+    /* Section headers wrap instead of overflowing */
+    .section-header { flex-wrap: wrap; gap: 8px; }
+
+    /* Utility: any grid div that should collapse to 1 col on mobile */
+    .mob-stack { grid-template-columns: 1fr !important; }
+
+    /* Hide the date in topbar — saves space for page title */
+    .topbar-date { display: none; }
+
+    /* Form containers that have a fixed max-width should go full-width */
+    .content > div[style*="max-width"] { max-width: 100% !important; }
+
+    /* Patient identity card wraps on narrow screens */
+    .patient-header { flex-wrap: wrap; }
+
+    /* Table action buttons stack vertically on very narrow screens */
+    .td-actions { flex-wrap: wrap; gap: 4px; }
+
+    /* Flex-based mob-stack (e.g. map info row) */
+    .mob-stack[style*="display:flex"] > *,
+    div.mob-stack > * { min-width: 0; }
+    .mob-stack[style*="flex-wrap"] > * { flex-basis: 100% !important; border-right: none !important; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   LANDING PAGE RESPONSIVE — < 900px
+═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 899px) {
+
+    /* ── Navbar ── */
+    .lp-nav {
+        padding: 0 20px;
+        height: 56px;
+    }
+    .lp-nav-links { display: none; } /* hide nav links — too cramped */
+
+    /* ── Hero ── */
+    .lp-hero {
+        padding: 56px 20px 48px;
+    }
+    .lp-hero-title {
+        font-size: 36px;
+        letter-spacing: -1px;
+    }
+    .lp-hero-sub {
+        font-size: 15px;
+        margin-bottom: 32px;
+    }
+    .lp-hero-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 40px;
+    }
+    .lp-btn-primary,
+    .lp-btn-ghost {
+        width: 100%;
+        justify-content: center;
+        font-size: 14px;
+        padding: 13px 20px;
+    }
+    .lp-hero-cards {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    /* ── Stats bar ── */
+    .lp-stats-inner {
+        padding: 0 20px;
+        flex-wrap: wrap;
+    }
+    .lp-stat-item {
+        flex: 1 1 calc(50% - 1px);
+        padding: 22px 0;
+    }
+    .lp-stat-item + .lp-stat-item::before { display: none; }
+
+    /* ── Split sections (GPS + NFC) ── */
+    .lp-split-section {
+        padding: 56px 20px;
+    }
+    .lp-split {
+        grid-template-columns: 1fr;
+        gap: 36px;
+    }
+    .lp-split-title {
+        font-size: 28px;
+    }
+
+    /* ── Pharmacy section ── */
+    .lp-pharma-section {
+        padding: 56px 20px;
+    }
+    .lp-center-header {
+        margin-bottom: 36px;
+    }
+    .lp-center-header h2 {
+        font-size: 28px;
+    }
+    .lp-pharma-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    /* ── Beacon section ── */
+    .lp-beacon-section {
+        padding: 56px 20px;
+    }
+    .lp-beacon-header {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+    .lp-beacon-header h2 {
+        font-size: 28px;
+    }
+    .lp-zone-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    /* ── NFC section ── */
+    .lp-nfc-section {
+        padding: 56px 20px;
+    }
+    .lp-nfc-inner {
+        grid-template-columns: 1fr;
+        gap: 36px;
+    }
+
+    /* ── CTA ── */
+    .lp-cta-section {
+        padding: 56px 20px;
+    }
+    .lp-cta-inner h2 {
+        font-size: 28px;
+    }
+    .lp-cta-inner p {
+        font-size: 15px;
+        margin-bottom: 32px;
+    }
+
+    /* ── Footer ── */
+    .lp-footer {
+        padding: 36px 20px;
+    }
+}

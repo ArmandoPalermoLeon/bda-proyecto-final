@@ -98,7 +98,7 @@
 
     function addRow() {
         const row = document.createElement('div');
-        row.style.cssText = 'display:grid; grid-template-columns:1fr 100px 32px; gap:8px; align-items:end; margin-bottom:8px;';
+        row.style.cssText = 'display:grid; grid-template-columns:1fr minmax(72px,100px) 34px; gap:8px; align-items:end; margin-bottom:8px;';
         row.innerHTML = `
             <select name="GTIN[]" class="form-control" required>
                 <option value="" disabled selected>Medicamento...</option>

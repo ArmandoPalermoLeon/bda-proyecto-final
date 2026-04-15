@@ -15,7 +15,7 @@
     <!-- Tarjeta de identidad del paciente -->
     <div class="card" style="margin-bottom:20px;">
         <div class="card-body" style="padding:20px;">
-            <div style="display:flex; align-items:center; gap:18px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
 
                 <div style="width:56px; height:56px; border-radius:50%; background:#e6f1fb;
                             display:flex; align-items:center; justify-content:center;
@@ -23,7 +23,7 @@
                     {{ paciente.nombre_paciente[0] }}{{ paciente.apellido_p_pac[0] }}
                 </div>
 
-                <div style="flex:1;">
+                <div style="flex:1; min-width:160px;">
                     <div style="font-size:18px; font-weight:700; color:#1a1a2e;">
                         {{ paciente.nombre_paciente }} {{ paciente.apellido_p_pac }} {{ paciente.apellido_m_pac }}
                     </div>
@@ -195,20 +195,65 @@
         {% endif %}
     </div>
 
-    <!-- Kit de dispositivos asignado -->
-    {% if kit %}
+    <!-- Kit de dispositivos + Pulsera NFC -->
     <div class="section-header" style="margin-bottom:12px;">
         <div>
-            <div class="section-title">Kit de dispositivos asignado</div>
-            <div class="section-sub">Equipos de localización y monitoreo · asignado {{ kit.fecha_entrega[8:10] }}/{{ kit.fecha_entrega[5:7] }}/{{ kit.fecha_entrega[0:4] }}</div>
+            <div class="section-title">Kit de dispositivos</div>
+            <div class="section-sub">Equipos de localización y monitoreo</div>
         </div>
+        {% if nfc_disponibles or nfc_asignacion %}
+        <button id="btn-nfc"
+                onclick="document.getElementById('form-nfc').style.display = document.getElementById('form-nfc').style.display === 'none' ? 'block' : 'none'"
+                class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <path d="M12 2C8 2 4 5 4 9c0 2.5 1.5 4.5 3 6l5 7 5-7c1.5-1.5 3-3.5 3-6 0-4-4-7-8-7z"/>
+                <circle cx="12" cy="9" r="2"/>
+            </svg>
+            {{ 'Cambiar pulsera' if nfc_asignacion else 'Asignar pulsera NFC' }}
+        </button>
+        {% endif %}
     </div>
 
+    {% if nfc_disponibles or nfc_asignacion %}
+    <div id="form-nfc" style="display:none; margin-bottom:16px;">
+        <div class="card">
+            <div style="padding:20px;">
+                <div style="font-size:13px; font-weight:600; color:#0F172A; margin-bottom:14px;">
+                    {{ 'Cambiar pulsera NFC' if nfc_asignacion else 'Asignar pulsera NFC' }}
+                </div>
+                {% if nfc_disponibles %}
+                <form method="POST"
+                      action="{{ url_for('pacientes_asignar_nfc', id=paciente.id_paciente) }}"
+                      style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <select name="id_dispositivo" class="form-control" required style="max-width:280px;">
+                        <option value="">— Selecciona pulsera —</option>
+                        {% for d in nfc_disponibles %}
+                        <option value="{{ d.id_dispositivo }}">{{ d.id_serial }}{% if d.modelo %} · {{ d.modelo }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary">Confirmar</button>
+                    <button type="button" class="btn btn-secondary"
+                            onclick="document.getElementById('form-nfc').style.display='none'">Cancelar</button>
+                </form>
+                <div style="font-size:11px; color:#94A3B8; margin-top:10px;">
+                    {% if nfc_asignacion %}La pulsera actual se cerrará al confirmar el cambio.{% endif %}
+                </div>
+                {% else %}
+                <div style="font-size:13px; color:#64748B;">
+                    No hay dispositivos NFC disponibles sin asignar. Registra uno en
+                    <a href="{{ url_for('dispositivos') }}" style="color:#0E7490;">Dispositivos</a>.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="card" style="margin-bottom:20px;">
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0;">
+        <div class="mob-stack" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0;">
             <div style="padding:16px 20px; border-right:1px solid #F1F5F9;">
                 <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px;">GPS</div>
-                {% if kit.codigo_gps %}
+                {% if kit and kit.codigo_gps %}
                 <div style="font-size:14px; font-weight:700; color:#0F172A; font-variant-numeric:tabular-nums;">{{ kit.codigo_gps }}</div>
                 <span style="font-size:10px; background:#ECFDF5; color:#065F46; font-weight:700; padding:2px 8px; border-radius:100px; border:1px solid #A7F3D0; margin-top:6px; display:inline-block;">Activo</span>
                 {% else %}
@@ -222,16 +267,16 @@
             </div>
             <div style="padding:16px 20px;">
                 <div style="font-size:10px; font-weight:700; color:#94A3B8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px;">NFC</div>
-                {% if kit.codigo_nfc %}
-                <div style="font-size:14px; font-weight:700; color:#0F172A; font-variant-numeric:tabular-nums;">{{ kit.codigo_nfc }}</div>
+                {% if nfc_asignacion %}
+                <div style="font-size:14px; font-weight:700; color:#0F172A; font-variant-numeric:tabular-nums;">{{ nfc_asignacion.serial_nfc }}</div>
                 <span style="font-size:10px; background:#ECFDF5; color:#065F46; font-weight:700; padding:2px 8px; border-radius:100px; border:1px solid #A7F3D0; margin-top:6px; display:inline-block;">Activo</span>
+                <div style="font-size:11px; color:#94A3B8; margin-top:4px;">desde {{ nfc_asignacion.fecha_inicio[8:10] }}/{{ nfc_asignacion.fecha_inicio[5:7] }}/{{ nfc_asignacion.fecha_inicio[0:4] }}</div>
                 {% else %}
                 <div style="font-size:12px; color:#94A3B8;">No asignado</div>
                 {% endif %}
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Historial de sedes + transferencia -->
     <div class="section-header" style="margin-bottom:12px;">

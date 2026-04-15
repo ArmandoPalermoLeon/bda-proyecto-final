@@ -197,3 +197,23 @@ CSS variables in `static/css/main.css`:
 Portal familiar uses the same teal palette but softer background (`#F0F9FF`), no sidebar. Styles are inline in `base_familiar.html`.
 
 UI is entirely in Spanish.
+
+---
+
+## Pending UI Improvements
+
+These were identified and deferred — pick up from here in future sessions:
+
+### Done
+- ✅ Admin panel responsive sidebar (hamburger + overlay, breakpoint 900px) — `main.css` + `base.html`
+
+### To Do
+2. **Portal familiar auto-refresh** — status banner and GPS data go stale without a page reload. Add a `setTimeout` (60s) that either reloads the page or hits a lightweight `/api/portal/estado/<id>` endpoint and updates the banner + time strings in-place. Families check this anxiously — it needs to feel live.
+
+3. **Caregiver mobile webapp** (`GET /cuidador/escanear`) — currently commented out in `app.py`. A mobile-first page (same visual language as portal familiar) for the caregiver to tap the patient's NFC wristband and log a round. Flow: open page → tap wristband → `POST /api/nfc/lectura` → confirmation. Requires HTTPS (Web NFC). Auth via `medico_requerido` or a new `cuidador_requerido` decorator.
+
+4. **Alert badge on sidebar nav item** — the "Alertas" nav item in `base.html` should show a live red count pill when `alertas_activas > 0`. Count already available on dashboard; needs to be injected into the base layout (pass via a `g` context or base query).
+
+5. **Dashboard empty states** — when sections have no data (no visits today, no critical meds, no active alerts), replace empty tables with illustrated empty-state blocks. Consistent with the card style.
+
+6. **Portal familiar login page polish** — `templates/portal_familiar/login.html` is likely the most bare-looking page in the app. Bring it up to the same visual quality as the rest of the portal familiar.

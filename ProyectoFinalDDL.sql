@@ -38,6 +38,7 @@ DROP TABLE IF EXISTS receta_medicamentos    CASCADE;
 DROP TABLE IF EXISTS recetas                CASCADE;
 DROP TABLE IF EXISTS detecciones_beacon     CASCADE;
 DROP TABLE IF EXISTS lecturas_gps           CASCADE;
+DROP TABLE IF EXISTS asignacion_nfc         CASCADE;
 DROP TABLE IF EXISTS asignacion_kit         CASCADE;
 DROP TABLE IF EXISTS turno_cuidador         CASCADE;
 DROP TABLE IF EXISTS beacon_zona            CASCADE;
@@ -323,6 +324,20 @@ CREATE TABLE asignacion_kit (
         FOREIGN KEY (id_dispositivo_gps) REFERENCES dispositivos (id_dispositivo)
         ON DELETE RESTRICT,
     CONSTRAINT chk_ak_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_entrega)
+);
+
+
+CREATE TABLE asignacion_nfc (
+    id_asignacion  SERIAL  PRIMARY KEY,
+    id_paciente    INTEGER NOT NULL,
+    id_dispositivo INTEGER NOT NULL,
+    fecha_inicio   DATE    NOT NULL DEFAULT CURRENT_DATE,
+    fecha_fin      DATE,
+    CONSTRAINT fk_anfc_paciente
+        FOREIGN KEY (id_paciente)    REFERENCES pacientes    (id_paciente),
+    CONSTRAINT fk_anfc_dispositivo
+        FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo),
+    CONSTRAINT chk_anfc_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
 );
 
 
@@ -751,6 +766,16 @@ CREATE UNIQUE INDEX uq_sede_activa_por_empleado
 CREATE UNIQUE INDEX uq_nfc_activo_por_receta
     ON receta_nfc (id_receta)
     WHERE fecha_fin_gestion IS NULL;
+
+-- Un paciente solo puede tener una pulsera NFC activa a la vez
+CREATE UNIQUE INDEX uq_nfc_activo_por_paciente
+    ON asignacion_nfc (id_paciente)
+    WHERE fecha_fin IS NULL;
+
+-- Un dispositivo NFC solo puede estar asignado a un paciente activo a la vez
+CREATE UNIQUE INDEX uq_nfc_dispositivo_activo
+    ON asignacion_nfc (id_dispositivo)
+    WHERE fecha_fin IS NULL;
 
 -- Un paciente solo puede tener un kit asignado simultáneamente
 CREATE UNIQUE INDEX uq_kit_activo_por_paciente

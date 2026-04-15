@@ -470,6 +470,25 @@ def pacientes_historial(id):
         ORDER BY ee.fecha_recepcion DESC
     """, (id,))
 
+    nfc_asignacion = db.one("""
+        SELECT an.id_asignacion, d.id_serial AS serial_nfc,
+               TO_CHAR(an.fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio
+        FROM asignacion_nfc an
+        JOIN dispositivos d ON an.id_dispositivo = d.id_dispositivo
+        WHERE an.id_paciente = %s AND an.fecha_fin IS NULL
+    """, (id,))
+
+    nfc_disponibles = db.query("""
+        SELECT d.id_dispositivo, d.id_serial, d.modelo
+        FROM dispositivos d
+        WHERE d.tipo = 'NFC' AND d.estado = 'Activo'
+          AND NOT EXISTS (
+              SELECT 1 FROM asignacion_nfc an
+              WHERE an.id_dispositivo = d.id_dispositivo AND an.fecha_fin IS NULL
+          )
+        ORDER BY d.id_serial
+    """)
+
     return render_template(
         "pacientes/historial.html",
         paciente=paciente,
@@ -478,6 +497,8 @@ def pacientes_historial(id):
         cuidadores=cuidadores,
         contactos=contactos,
         kit=kit,
+        nfc_asignacion=nfc_asignacion,
+        nfc_disponibles=nfc_disponibles,
         historial_sedes=historial_sedes,
         sedes_disponibles=sedes_disponibles,
         alertas_paciente=alertas_paciente,
@@ -553,6 +574,18 @@ def pacientes_transferir_sede(id):
     except Exception as e:
         flash(f"Error al transferir paciente: {e}", "error")
 
+    return redirect(url_for("pacientes_historial", id=id))
+
+
+@app.route("/pacientes/<int:id>/asignar-nfc", methods=["POST"])
+@admin_requerido
+def pacientes_asignar_nfc(id):
+    try:
+        id_dispositivo = int(request.form["id_dispositivo"])
+        db.execute("CALL sp_nfc_asignar(%s, %s)", (id, id_dispositivo))
+        flash("Pulsera NFC asignada correctamente.", "success")
+    except Exception as e:
+        flash(f"Error al asignar pulsera NFC: {e}", "error")
     return redirect(url_for("pacientes_historial", id=id))
 
 
@@ -1561,7 +1594,42 @@ def dashboard_clinica(id_sucursal):
           AND tc.{_dia_col} = TRUE
           AND sz.id_sede = %s
     """, (id_sucursal,)) or 0
-    tareas_pendientes = sum(1 for t in data.TAREAS_HOY if t["estado"] == "Pendiente")
+    tareas_pendientes = 0  # no hay tabla tareas aún
+
+    # Cuidadores activos por paciente para esta sede {id_paciente: [...]}
+    _asig_rows = db.query("""
+        SELECT ac.id_paciente,
+               e.nombre     AS nombre_cuidador,
+               e.apellido_p AS apellido_p_cuid,
+               e.apellido_m AS apellido_m_cuid,
+               e.telefono   AS telefono_cuid,
+               TO_CHAR(ac.fecha_inicio, 'YYYY-MM-DD') AS fecha_asig_cuidador
+        FROM asignacion_cuidador ac
+        JOIN cuidadores c ON ac.id_cuidador = c.id_empleado
+        JOIN empleados  e ON c.id_empleado  = e.id_empleado
+        JOIN sede_pacientes sp ON ac.id_paciente = sp.id_paciente
+        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND ac.fecha_fin IS NULL
+    """, (id_sucursal,))
+    asignaciones = {}
+    for row in _asig_rows:
+        asignaciones.setdefault(row["id_paciente"], []).append(row)
+
+    # Medicamentos por paciente via recetas activas {id_paciente: [...]}
+    _med_rows = db.query("""
+        SELECT r.id_paciente,
+               m.nombre_medicamento AS medicamento,
+               rm.dosis,
+               rm.frecuencia_horas
+        FROM recetas r
+        JOIN receta_medicamentos rm ON r.id_receta = rm.id_receta
+        JOIN medicamentos m         ON rm.gtin     = m.gtin
+        JOIN sede_pacientes sp      ON r.id_paciente = sp.id_paciente
+        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND r.estado = 'Activa'
+        ORDER BY r.id_paciente, m.nombre_medicamento
+    """, (id_sucursal,))
+    medicamentos_por_paciente = {}
+    for row in _med_rows:
+        medicamentos_por_paciente.setdefault(row["id_paciente"], []).append(row)
 
     ids_sede = {p["id_paciente"] for p in pacientes_sede}
     expedientes = []
@@ -1576,14 +1644,61 @@ def dashboard_clinica(id_sucursal):
         """, (pid,))
         expedientes.append({
             "paciente":     p,
-            "perfil":       data.PERFIL_CLINICO.get(pid, {}),
-            "medicamentos": data.MEDICAMENTOS.get(pid, []),
-            "bitacoras":    [b for b in data.BITACORAS if b["id_paciente"] == pid],
+            "perfil":       {},  # sin tabla perfil_clinico aún
+            "medicamentos": medicamentos_por_paciente.get(pid, []),
+            "bitacoras":    [],  # sin tabla bitacoras clínicas aún
             "enfermedades": enfermedades,
         })
 
-    incidentes_sede = [i for i in data.INCIDENTES if i["id_paciente"] in ids_sede]
-    comedor_hoy     = [b for b in data.BITACORA_COMEDOR if b["id_sede"] == id_sucursal]
+    # Incidentes = alertas reales de pacientes en esta sede
+    incidentes_sede = db.query("""
+        SELECT a.id_alerta                           AS id,
+               TO_CHAR(a.fecha_hora, 'YYYY-MM-DD')  AS fecha,
+               TO_CHAR(a.fecha_hora, 'HH24:MI')     AS hora,
+               a.id_paciente,
+               p.nombre || ' ' || p.apellido_p      AS paciente,
+               a.tipo_alerta                         AS tipo,
+               a.estatus                             AS gravedad,
+               NULL                                  AS descripcion,
+               NULL                                  AS accion_tomada
+        FROM alertas a
+        JOIN pacientes p      ON a.id_paciente = p.id_paciente
+        JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
+        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL
+        ORDER BY a.fecha_hora DESC
+        LIMIT 20
+    """, (id_sucursal,))
+
+    # Alertas médicas = alertas activas de pacientes en esta sede
+    alertas_medicas = db.query("""
+        SELECT a.tipo_alerta                         AS tipo,
+               p.nombre || ' ' || p.apellido_p      AS paciente,
+               TO_CHAR(a.fecha_hora, 'HH24:MI')     AS hora,
+               TO_CHAR(a.fecha_hora, 'YYYY-MM-DD')  AS fecha,
+               a.estatus                             AS estado
+        FROM alertas a
+        JOIN pacientes p       ON a.id_paciente = p.id_paciente
+        JOIN sede_pacientes sp ON p.id_paciente  = sp.id_paciente
+        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND a.estatus = 'Activa'
+        ORDER BY a.fecha_hora DESC
+        LIMIT 10
+    """, (id_sucursal,))
+
+    # Bitácora del comedor hoy en esta sede
+    comedor_hoy = db.query("""
+        SELECT bc.id_bitacora  AS id,
+               bc.turno,
+               bc.menu_nombre,
+               bc.cantidad_platos,
+               bc.incidencias,
+               TO_CHAR(bc.fecha, 'YYYY-MM-DD') AS fecha,
+               e.nombre || ' ' || e.apellido_p AS cocinero
+        FROM bitacora_comedor bc
+        JOIN cocineros co ON bc.id_cocinero = co.id_empleado
+        JOIN empleados  e  ON co.id_empleado = e.id_empleado
+        WHERE bc.id_sede = %s AND bc.fecha = CURRENT_DATE
+        ORDER BY bc.turno
+    """, (id_sucursal,))
 
     # Cobertura de zonas por turno activo ahora mismo en esta sede
     cobertura_zonas = db.query(f"""
@@ -1625,10 +1740,10 @@ def dashboard_clinica(id_sucursal):
         total_pacientes=len(pacientes_sede),
         tareas_pendientes=tareas_pendientes,
         alertas_activas=alertas_activas_count,
-        tareas=data.TAREAS_HOY,
-        alertas_medicas=data.ALERTAS_MEDICAS,
+        tareas=[],
+        alertas_medicas=alertas_medicas,
         cobertura_zonas=cobertura_zonas,
-        asignaciones=data.ASIGNACIONES_CUIDADORES,
+        asignaciones=asignaciones,
         pacientes=pacientes_sede,
         expedientes=expedientes,
         incidentes=incidentes_sede,
@@ -1961,6 +2076,75 @@ def portal_paciente(id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# NFC TEST — development only, no auth required
+# TODO: remove or protect before production
+
+@app.route("/test/nfc")
+def test_nfc_page():
+    return render_template("test_nfc.html")
+
+
+@app.route("/api/test/nfc", methods=["POST"])
+def test_nfc_read():
+    data = request.get_json(silent=True) or {}
+    tag_serial = data.get("tag_serial", "").strip()
+
+    if not tag_serial:
+        return jsonify({"status": "error", "message": "No serial received"}), 400
+
+    # Look up by exact serial, case-insensitive
+    device = db.one(
+        """
+        SELECT id_dispositivo, id_serial, modelo, estado
+        FROM dispositivos
+        WHERE tipo = 'NFC'
+          AND LOWER(id_serial) = LOWER(%s)
+        """,
+        [tag_serial],
+    )
+
+    if not device:
+        app.logger.info("Unknown NFC tag scanned: %s", tag_serial)
+        return jsonify({
+            "status": "not_found",
+            "tag_serial": tag_serial,
+            "message": "Tag not registered. Add this serial to Dispositivos as type NFC.",
+        })
+
+    # Find linked patient via asignacion_nfc (direct identity link)
+    patient = db.one(
+        """
+        SELECT p.id_paciente, p.nombre, p.apellido_p
+        FROM asignacion_nfc an
+        JOIN pacientes p ON an.id_paciente = p.id_paciente
+        WHERE an.id_dispositivo = %s AND an.fecha_fin IS NULL
+        """,
+        [device["id_dispositivo"]],
+    )
+
+    response = {
+        "status": "found",
+        "device_id": device["id_dispositivo"],
+        "device_serial": device["id_serial"],
+        "device_status": device["estado"],
+        "tag_serial_raw": tag_serial,
+        "patient_name": "Sin paciente asignado",
+        "patient_id": None,
+    }
+
+    if patient:
+        response["patient_name"] = f"{patient['nombre']} {patient['apellido_p']}"
+        response["patient_id"] = patient["id_paciente"]
+
+    return jsonify(response)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5002)
+    if not os.path.exists("cert.pem"):
+        os.system(
+            'openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem '
+            '-days 365 -nodes -subj "/CN=localhost"'
+        )
+    app.run(debug=True, host="0.0.0.0", port=5002, ssl_context=("cert.pem", "key.pem"))
