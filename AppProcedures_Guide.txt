@@ -261,7 +261,226 @@ Lo que hace internamente:
 Ruta que lo usa: POST /turnos/eliminar/<id>
 
 
+
+
+---
+
+
+11. sp_transferir_sede
+----------------------
+Transfiere un paciente de su sede actual a una nueva de forma atómica.
+
+Parámetros:
+  - p_id_paciente   : ID del paciente a transferir
+  - p_nueva_sede_id : ID de la sede destino
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_transferir_sede(%s, %s)", (id, nueva_sede_id))
+
+Lo que hace internamente:
+  Cierra la fila activa en sede_pacientes (fecha_salida y hora_salida = NOW).
+  Calcula el siguiente ID y abre una nueva fila para la sede destino.
+  Todo en una sola transacción — nunca queda el paciente sin sede ni con dos activas.
+  La validación de misma-sede y de múltiples activas sigue haciéndose en Python antes de llamar al SP.
+
+Ruta que lo usa: POST /pacientes/<id>/transferir-sede
+
+
+---
+
+
+12. sp_upd_alerta_atendida
+--------------------------
+Marca una alerta como atendida.
+
+Parámetros:
+  - p_id_alerta : ID de la alerta
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_alerta_atendida(%s)", (id,))
+
+Lo que hace internamente:
+  UPDATE alertas SET estatus = 'Atendida'. No toca fecha_hora ni ningún otro campo.
+
+Ruta que lo usa: POST /alertas/resolver/<id>
+
+
+---
+
+
+13. sp_del_alerta
+-----------------
+Elimina una alerta permanentemente.
+
+Parámetros:
+  - p_id_alerta : ID de la alerta a eliminar
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_del_alerta(%s)", (id,))
+
+Lo que hace internamente:
+  DELETE directo sobre alertas. Las alertas generadas por triggers pueden eliminarse
+  desde la UI pero normalmente se marcan como Atendidas en lugar de borrarse.
+
+Ruta que lo usa: POST /alertas/eliminar/<id>
+
+
+---
+
+
+14. sp_ins_dispositivo
+----------------------
+Registra un nuevo dispositivo IoT (GPS, BEACON o NFC).
+
+Parámetros:
+  - p_id_dispositivo : ID entero (manual, no SERIAL)
+  - p_id_serial      : Serial único del dispositivo
+  - p_tipo           : Exactamente 'GPS', 'BEACON' o 'NFC'
+  - p_modelo         : Modelo del dispositivo
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_dispositivo(%s, %s, %s, %s)", (id_disp, id_serial, tipo, modelo))
+
+Lo que hace internamente:
+  INSERT en dispositivos con estado = 'Activo' por defecto.
+  El tipo y el serial tienen constraints únicos — si se duplica el serial la DB rechaza el INSERT.
+
+Ruta que lo usa: POST /dispositivos/nuevo
+
+
+---
+
+
+15. sp_upd_dispositivo
+----------------------
+Actualiza los datos de un dispositivo existente.
+
+Parámetros:
+  - p_id_dispositivo : ID del dispositivo a modificar
+  - p_id_serial      : Serial nuevo
+  - p_tipo           : Tipo nuevo
+  - p_modelo         : Modelo nuevo
+  - p_estado         : Estado nuevo ('Activo', 'Inactivo', etc.)
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_dispositivo(%s, %s, %s, %s, %s)", (id, id_serial, tipo, modelo, estado))
+
+Lo que hace internamente:
+  UPDATE sobre dispositivos usando id_dispositivo como llave.
+
+Ruta que lo usa: POST /dispositivos/editar/<id>
+
+
+---
+
+
+16. sp_del_dispositivo
+----------------------
+Elimina un dispositivo permanentemente.
+
+Parámetros:
+  - p_id_dispositivo : ID del dispositivo a eliminar
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_del_dispositivo(%s)", (id,))
+
+Lo que hace internamente:
+  DELETE directo. Fallará si el dispositivo tiene lecturas_gps, detecciones_beacon,
+  lecturas_nfc o asignacion_kit activas (FK con ON DELETE RESTRICT).
+
+Ruta que lo usa: POST /dispositivos/eliminar/<id>
+
+
+---
+
+
+17. sp_ins_zona
+---------------
+Registra una nueva zona segura.
+
+Parámetros:
+  - p_nombre_zona   : Nombre de la zona
+  - p_latitud       : Latitud del centro (WGS-84)
+  - p_longitud      : Longitud del centro (WGS-84)
+  - p_radio_metros  : Radio de la zona en metros
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_zona(%s, %s, %s, %s)", (nombre_zona, latitud, longitud, radio))
+
+Lo que hace internamente:
+  INSERT en zonas. El id_zona es SERIAL — la DB lo asigna automáticamente.
+  El trigger trg_zona_exit_gps usará esta zona en su próxima ejecución.
+
+Ruta que lo usa: POST /zonas/nueva
+
+
+---
+
+
+18. sp_upd_zona
+---------------
+Actualiza una zona segura existente.
+
+Parámetros:
+  - p_id_zona       : ID de la zona a modificar
+  - p_nombre_zona   : Nombre nuevo
+  - p_latitud       : Latitud nueva
+  - p_longitud      : Longitud nueva
+  - p_radio_metros  : Radio nuevo en metros
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_zona(%s, %s, %s, %s, %s)", (id, nombre_zona, latitud, longitud, radio))
+
+Lo que hace internamente:
+  UPDATE sobre zonas. Cambiar el radio afecta directamente el comportamiento
+  del trigger trg_zona_exit_gps en la próxima lectura GPS.
+
+Ruta que lo usa: POST /zonas/editar/<id>
+
+
+---
+
+
+19. sp_del_zona
+---------------
+Elimina una zona segura permanentemente.
+
+Parámetros:
+  - p_id_zona : ID de la zona a eliminar
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_del_zona(%s)", (id,))
+
+Lo que hace internamente:
+  DELETE directo sobre zonas. Fallará si hay sede_zonas o beacon_zona vinculados
+  (FK con ON DELETE RESTRICT).
+
+Ruta que lo usa: POST /zonas/eliminar/<id>
+
+
+---
+
+
+20. sp_upd_cerrar_asignacion_beacon
+------------------------------------
+Cierra la asignación activa de un beacon a un cuidador.
+
+Parámetros:
+  - p_id_asignacion : ID de la asignación a cerrar
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_cerrar_asignacion_beacon(%s)", (id,))
+
+Lo que hace internamente:
+  UPDATE asignacion_beacon SET fecha_fin = CURRENT_DATE.
+  Al tener fecha_fin, los índices parciales uq_beacon_activo_por_cuidador y
+  uq_beacon_dispositivo_activo ya no la consideran activa, permitiendo
+  reasignar el beacon o el cuidador.
+
+Ruta que lo usa: POST /equipamiento/asignacion-beacons/<id>/cerrar
+
+
 ===========================================
-Total: 10 procedimientos — módulos pacientes y turnos
+Total: 20 procedimientos — pacientes, turnos, alertas, dispositivos, zonas, beacon
 Archivo SQL: AppProcedures.sql
 Aplicar con: psql -U palermingoat -d alzheimer -f AppProcedures.sql
