@@ -399,3 +399,190 @@ BEGIN
     DELETE FROM turno_cuidador WHERE id_turno = p_id_turno;
 END;
 $$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SP 23 — Cuidadores
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_ins_cuidador(
+    p_id_empleado   INT,
+    p_nombre        VARCHAR,
+    p_apellido_p    VARCHAR,
+    p_apellido_m    VARCHAR,
+    p_curp          VARCHAR,
+    p_telefono      VARCHAR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO empleados (id_empleado, nombre, apellido_p, apellido_m, CURP_pasaporte, telefono)
+    VALUES (p_id_empleado, p_nombre, p_apellido_p, p_apellido_m, p_curp, p_telefono);
+
+    INSERT INTO cuidadores (id_empleado)
+    VALUES (p_id_empleado);
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_upd_cuidador(
+    p_id_empleado   INT,
+    p_nombre        VARCHAR,
+    p_apellido_p    VARCHAR,
+    p_apellido_m    VARCHAR,
+    p_curp          VARCHAR,
+    p_telefono      VARCHAR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE empleados
+    SET nombre = p_nombre, apellido_p = p_apellido_p, apellido_m = p_apellido_m,
+        telefono = p_telefono, CURP_pasaporte = p_curp
+    WHERE id_empleado = p_id_empleado;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_del_cuidador(
+    p_id_empleado INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    DELETE FROM cuidadores WHERE id_empleado = p_id_empleado;
+    DELETE FROM empleados  WHERE id_empleado = p_id_empleado;
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SP 26 — Alertas
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_ins_alerta(
+    p_id_paciente   INT,        -- NULL for zone-level alerts
+    p_tipo_alerta   VARCHAR,
+    p_fecha_hora    TIMESTAMP
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_id INT;
+BEGIN
+    SELECT COALESCE(MAX(id_alerta), 0) + 1 INTO v_id FROM alertas;
+    INSERT INTO alertas (id_alerta, id_paciente, tipo_alerta, fecha_hora, estatus)
+    VALUES (v_id, p_id_paciente, p_tipo_alerta, p_fecha_hora, 'Activa');
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SP 27 — Farmacia
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_upd_stock(
+    p_gtin          VARCHAR,
+    p_id_sede       INT,
+    p_stock_nuevo   INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE inventario_medicinas
+    SET stock_actual = p_stock_nuevo
+    WHERE GTIN = p_gtin AND id_sede = p_id_sede;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_ins_suministro(
+    p_id_suministro INT,
+    p_id_farmacia   INT,
+    p_id_sede       INT,
+    p_fecha_entrega DATE,
+    p_estado        VARCHAR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO suministros (id_suministro, id_farmacia, id_sede, fecha_entrega, estado)
+    VALUES (p_id_suministro, p_id_farmacia, p_id_sede, p_fecha_entrega, p_estado);
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_ins_suministro_linea(
+    p_id_suministro INT,
+    p_gtin          VARCHAR,
+    p_cantidad      INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO suministro_medicinas (id_suministro, GTIN, cantidad)
+    VALUES (p_id_suministro, p_gtin, p_cantidad)
+    ON CONFLICT (id_suministro, GTIN)
+    DO UPDATE SET cantidad = suministro_medicinas.cantidad + EXCLUDED.cantidad;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_upd_suministro_estado(
+    p_id_suministro INT,
+    p_estado        VARCHAR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE suministros SET estado = p_estado WHERE id_suministro = p_id_suministro;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_del_suministro(
+    p_id_suministro INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    DELETE FROM suministros WHERE id_suministro = p_id_suministro;
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SP 32 — Visitas
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_ins_visita(
+    p_id_visita     INT,
+    p_id_paciente   INT,
+    p_id_visitante  INT,
+    p_id_sede       INT,
+    p_fecha_entrada DATE,
+    p_hora_entrada  TIME
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO visitas (id_visita, id_paciente, id_visitante, id_sede, fecha_entrada, hora_entrada)
+    VALUES (p_id_visita, p_id_paciente, p_id_visitante, p_id_sede, p_fecha_entrada, p_hora_entrada);
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SP 33 — GPS
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_ins_lectura_gps(
+    p_id_dispositivo    INT,
+    p_latitud           DOUBLE PRECISION,
+    p_longitud          DOUBLE PRECISION,
+    p_nivel_bateria     INT,
+    p_altura            DOUBLE PRECISION    -- NULL if not provided
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_id INT;
+BEGIN
+    SELECT COALESCE(MAX(id_lectura), 0) + 1 INTO v_id FROM lecturas_gps;
+    INSERT INTO lecturas_gps
+        (id_lectura, id_dispositivo, fecha_hora, latitud, longitud, altura, nivel_bateria, geom)
+    VALUES (
+        v_id, p_id_dispositivo, NOW(), p_latitud, p_longitud, p_altura, p_nivel_bateria,
+        ST_SetSRID(ST_MakePoint(p_longitud, p_latitud), 4326)::geography
+    );
+END;
+$$;

@@ -26,7 +26,7 @@ Convención de nombres de SPs:
 Archivos SQL con SPs aplicados a la DB:
 - `RecetasProcedures.sql` — módulo recetas/NFC (10 SPs)
 - `BeaconProcedures.sql` — módulo rondas beacon (1 SP, legacy)
-- `AppProcedures.sql` — 12 SPs DML: pacientes, enfermedades, contactos, kit GPS, turnos, asignacion_beacon, deteccion_beacon. ~25 DML calls aún pendientes de migrar.
+- `AppProcedures.sql` — 31 SPs DML: pacientes, cuidadores, enfermedades, contactos, kit GPS, turnos, asignacion_beacon, deteccion_beacon, alertas, farmacia, visitas, lecturas GPS. Todos los DML de app.py migrados a SPs.
 
 ## Running the App
 
@@ -124,7 +124,7 @@ Full integration plan is in `DEVICES.md`. **GPS is the central safety mechanism.
 | `ProyectoFinalDDL.sql` | Applied | Full schema + seed data (46 tables incl. asignacion_beacon) |
 | `RecetasProcedures.sql` | Applied | 10 stored procedures for receta/NFC module |
 | `BeaconProcedures.sql` | Applied | 1 SP legacy (sp_cuidador_registrar_ronda) |
-| `AppProcedures.sql` | Applied | 12 DML SPs — pacientes, enfermedades, contactos, kit GPS, turnos, asignacion_beacon, deteccion_beacon |
+| `AppProcedures.sql` | Applied | 31 DML SPs — pacientes, cuidadores, enfermedades, contactos, kit GPS, turnos, asignacion_beacon, deteccion_beacon, alertas, farmacia, visitas, lecturas GPS |
 | `beacon_scanner.py` | Active | Python BLE scanner using bleak — run alongside Flask to detect caregiver beacons |
 | `TriggersDB.sql` | Applied | 3 DB triggers (cobertura zona, batería baja, zona exit) |
 | `ProcedimientosAlmacenados.sql` | Ref only | Academic convention rewrite of all SPs + 3 REFCURSOR SPs |

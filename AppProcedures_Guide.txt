@@ -480,7 +480,172 @@ Lo que hace internamente:
 Ruta que lo usa: POST /equipamiento/asignacion-beacons/<id>/cerrar
 
 
+
+21. sp_ins_cuidador
+-------------------
+Registra un cuidador nuevo: inserta en empleados y en cuidadores en una sola transacción.
+
+Parámetros:
+  - p_id_empleado  : ID entero (ingresado manualmente)
+  - p_nombre       : Nombre
+  - p_apellido_p   : Apellido paterno
+  - p_apellido_m   : Apellido materno
+  - p_curp         : CURP o pasaporte
+  - p_telefono     : Teléfono (NULL permitido)
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_cuidador(%s, %s, %s, %s, %s, %s)",
+             (id_cuid, nombre, apellido_p, apellido_m, curp, telefono))
+
+Ruta que lo usa: POST /cuidadores/nuevo
+
+
+22. sp_upd_cuidador
+-------------------
+Actualiza los datos de un empleado/cuidador existente.
+
+Parámetros: p_id_empleado, p_nombre, p_apellido_p, p_apellido_m, p_curp, p_telefono
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_cuidador(%s, %s, %s, %s, %s, %s)",
+             (id, nombre, apellido_p, apellido_m, curp, telefono))
+
+Ruta que lo usa: POST /cuidadores/editar/<id>
+
+
+23. sp_del_cuidador
+-------------------
+Da de baja un cuidador: DELETE en cuidadores y luego en empleados (FK dependency).
+
+Parámetros: p_id_empleado
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_del_cuidador(%s)", (id,))
+
+Ruta que lo usa: POST /cuidadores/eliminar/<id>
+
+
+24. sp_ins_alerta
+-----------------
+Inserta una alerta manual con auto-incremento de ID.
+
+Parámetros:
+  - p_id_paciente  : INT (NULL para alertas de zona sin paciente)
+  - p_tipo_alerta  : VARCHAR — valor de cat_tipo_alerta
+  - p_fecha_hora   : TIMESTAMP
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_alerta(%s, %s, %s)", (id_paciente, tipo_alerta, fecha_hora))
+
+Lo que hace internamente:
+  Calcula COALESCE(MAX(id_alerta), 0)+1, inserta con estatus='Activa'.
+
+Ruta que lo usa: POST /alertas/nueva
+
+
+25. sp_upd_stock
+----------------
+Ajusta el stock de un medicamento en una sede.
+
+Parámetros: p_gtin, p_id_sede, p_stock_nuevo
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_stock(%s, %s, %s)", (gtin, id_sede, stock_nuevo))
+
+Ruta que lo usa: POST /farmacia/inventario/ajustar
+
+
+26. sp_ins_suministro
+---------------------
+Crea la cabecera de una orden de suministro.
+
+Parámetros: p_id_suministro, p_id_farmacia, p_id_sede, p_fecha_entrega, p_estado
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_suministro(%s, %s, %s, %s, %s)",
+             (id_sum, id_farmacia, id_sede, fecha, estado))
+
+Ruta que lo usa: POST /farmacia/suministro/nuevo
+
+
+27. sp_ins_suministro_linea
+---------------------------
+Agrega o acumula una línea de medicamento a una orden de suministro.
+Usa ON CONFLICT para sumar cantidad si el GTIN ya existe en esa orden.
+
+Parámetros: p_id_suministro, p_gtin, p_cantidad
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_suministro_linea(%s, %s, %s)", (id_sum, gtin, cantidad))
+
+Rutas que lo usan:
+  POST /farmacia/suministro/nuevo (bucle de líneas)
+  POST /farmacia/suministro/<id>/linea/agregar
+
+
+28. sp_upd_suministro_estado
+-----------------------------
+Actualiza el estado de una orden de suministro.
+
+Parámetros: p_id_suministro, p_estado
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_suministro_estado(%s, %s)", (id, nuevo_estado))
+
+Ruta que lo usa: POST /farmacia/suministro/<id>/estado
+
+
+29. sp_del_suministro
+---------------------
+Elimina una orden de suministro (CASCADE borra las líneas).
+
+Parámetros: p_id_suministro
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_del_suministro(%s)", (id,))
+
+Ruta que lo usa: POST /farmacia/suministro/<id>/eliminar
+
+
+30. sp_ins_visita
+-----------------
+Registra una visita de familiar/visitante a un paciente.
+
+Parámetros: p_id_visita, p_id_paciente, p_id_visitante, p_id_sede, p_fecha_entrada, p_hora_entrada
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_visita(%s, %s, %s, %s, %s, %s)",
+             (id_visita, id_paciente, id_visitante, id_sede, fecha, hora))
+
+Ruta que lo usa: POST /visitas/nueva
+
+
+31. sp_ins_lectura_gps
+-----------------------
+Inserta una lectura GPS con cálculo automático de geom (PostGIS).
+Dispara trg_zona_exit_gps y trg_bateria_baja_gps automáticamente.
+
+Parámetros:
+  - p_id_dispositivo  : ID del dispositivo GPS
+  - p_latitud         : DOUBLE PRECISION
+  - p_longitud        : DOUBLE PRECISION
+  - p_nivel_bateria   : INT
+  - p_altura          : DOUBLE PRECISION (NULL si no se conoce)
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_lectura_gps(%s, %s, %s, %s, %s)",
+             (id_dispositivo, latitud, longitud, nivel_bateria, altura))
+
+Lo que hace internamente:
+  Calcula COALESCE(MAX(id_lectura), 0)+1, inserta con geom via
+  ST_SetSRID(ST_MakePoint(longitud, latitud), 4326)::geography.
+
+Rutas que lo usan:
+  POST /sim/gps (simulador de lectura)
+  POST /api/gps/lectura (API IoT)
+
+
 ===========================================
-Total: 20 procedimientos — pacientes, turnos, alertas, dispositivos, zonas, beacon
+Total: 31 procedimientos — pacientes, cuidadores, turnos, alertas, dispositivos, zonas, beacon, farmacia, visitas, GPS
 Archivo SQL: AppProcedures.sql
 Aplicar con: psql -U palermingoat -d alzheimer -f AppProcedures.sql

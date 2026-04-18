@@ -686,17 +686,8 @@ def cuidadores_nuevo():
             telefono   = request.form.get("telefono_cuid", "").strip() or None
             curp       = request.form["curp_pasaporte"].strip()
 
-            db.execute_many([
-                ("""
-                    INSERT INTO empleados
-                        (id_empleado, nombre, apellido_p, apellido_m, CURP_pasaporte, telefono)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (id_cuid, nombre, apellido_p, apellido_m, curp, telefono)),
-                ("""
-                    INSERT INTO cuidadores (id_empleado)
-                    VALUES (%s)
-                """, (id_cuid,)),
-            ])
+            db.execute("CALL sp_ins_cuidador(%s, %s, %s, %s, %s, %s)",
+                       (id_cuid, nombre, apellido_p, apellido_m, curp, telefono))
 
             flash("Cuidador registrado correctamente.", "success")
             return redirect(url_for("cuidadores_lista"))
@@ -733,12 +724,8 @@ def cuidadores_editar(id):
             telefono   = request.form.get("telefono_cuid", "").strip() or None
             curp       = request.form["curp_pasaporte"].strip()
 
-            db.execute("""
-                UPDATE empleados
-                SET nombre = %s, apellido_p = %s, apellido_m = %s,
-                    telefono = %s, CURP_pasaporte = %s
-                WHERE id_empleado = %s
-            """, (nombre, apellido_p, apellido_m, telefono, curp, id))
+            db.execute("CALL sp_upd_cuidador(%s, %s, %s, %s, %s, %s)",
+                       (id, nombre, apellido_p, apellido_m, curp, telefono))
 
             flash("Cuidador actualizado correctamente.", "success")
             return redirect(url_for("cuidadores_lista"))
@@ -752,10 +739,7 @@ def cuidadores_editar(id):
 @admin_requerido
 def cuidadores_eliminar(id):
     try:
-        db.execute_many([
-            ("DELETE FROM cuidadores WHERE id_empleado = %s", (id,)),
-            ("DELETE FROM empleados  WHERE id_empleado = %s", (id,)),
-        ])
+        db.execute("CALL sp_del_cuidador(%s)", (id,))
         flash("Cuidador dado de baja correctamente.", "success")
     except Exception as e:
         flash(f"Error al dar de baja: {e}", "error")
@@ -1021,11 +1005,8 @@ def alertas_nueva():
             tipo_alerta = request.form["tipo_alerta"]
             fecha_hora  = request.form["fecha_hora"]
 
-            id_alerta = db.scalar("SELECT COALESCE(MAX(id_alerta), 0) + 1 FROM alertas")
-            db.execute("""
-                INSERT INTO alertas (id_alerta, id_paciente, tipo_alerta, fecha_hora, estatus)
-                VALUES (%s, %s, %s, %s, 'Activa')
-            """, (id_alerta, id_paciente, tipo_alerta, fecha_hora))
+            db.execute("CALL sp_ins_alerta(%s, %s, %s)",
+                       (id_paciente, tipo_alerta, fecha_hora))
 
             flash("Alerta registrada.", "success")
             return redirect(url_for("alertas"))
@@ -1310,11 +1291,7 @@ def farmacia_ajustar_stock():
         id_sede     = int(request.form["id_sede"])
         stock_nuevo = int(request.form["stock_actual"])
 
-        db.execute("""
-            UPDATE inventario_medicinas
-            SET stock_actual = %s
-            WHERE GTIN = %s AND id_sede = %s
-        """, (stock_nuevo, gtin, id_sede))
+        db.execute("CALL sp_upd_stock(%s, %s, %s)", (gtin, id_sede, stock_nuevo))
 
         flash("Stock actualizado correctamente.", "success")
     except Exception as e:
@@ -1343,18 +1320,14 @@ def farmacia_suministro_nuevo():
                 flash("Debe agregar al menos un medicamento a la orden.", "error")
                 raise ValueError("sin_lineas")
 
-            db.execute("""
-                INSERT INTO suministros (id_suministro, id_farmacia, id_sede, fecha_entrega, estado)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (id_sum, id_farmacia, id_sede, fecha, estado))
+            db.execute("CALL sp_ins_suministro(%s, %s, %s, %s, %s)",
+                       (id_sum, id_farmacia, id_sede, fecha, estado))
 
             for gtin, cant in zip(gtins, cantidades):
                 if not gtin.strip():
                     continue
-                db.execute("""
-                    INSERT INTO suministro_medicinas (id_suministro, GTIN, cantidad)
-                    VALUES (%s, %s, %s)
-                """, (id_sum, gtin.strip(), int(cant)))
+                db.execute("CALL sp_ins_suministro_linea(%s, %s, %s)",
+                           (id_sum, gtin.strip(), int(cant)))
 
             flash("Orden de suministro registrada.", "success")
             return redirect(url_for("farmacia_suministro_detalle", id=id_sum))
@@ -1421,10 +1394,7 @@ def farmacia_suministro_detalle(id):
 def farmacia_suministro_estado(id):
     try:
         nuevo_estado = request.form["estado"]
-        db.execute(
-            "UPDATE suministros SET estado = %s WHERE id_suministro = %s",
-            (nuevo_estado, id),
-        )
+        db.execute("CALL sp_upd_suministro_estado(%s, %s)", (id, nuevo_estado))
         flash("Estado de la orden actualizado.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
@@ -1437,12 +1407,7 @@ def farmacia_suministro_agregar_linea(id):
     try:
         gtin     = request.form["GTIN"].strip()
         cantidad = int(request.form["cantidad"])
-        db.execute("""
-            INSERT INTO suministro_medicinas (id_suministro, GTIN, cantidad)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (id_suministro, GTIN)
-            DO UPDATE SET cantidad = suministro_medicinas.cantidad + EXCLUDED.cantidad
-        """, (id, gtin, cantidad))
+        db.execute("CALL sp_ins_suministro_linea(%s, %s, %s)", (id, gtin, cantidad))
         flash("Medicamento agregado a la orden.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
@@ -1453,7 +1418,7 @@ def farmacia_suministro_agregar_linea(id):
 @admin_requerido
 def farmacia_suministro_eliminar(id):
     try:
-        db.execute("DELETE FROM suministros WHERE id_suministro = %s", (id,))
+        db.execute("CALL sp_del_suministro(%s)", (id,))
         flash("Orden eliminada.", "success")
     except Exception as e:
         flash(f"Error al eliminar: {e}", "error")
@@ -1540,10 +1505,8 @@ def visitas_nueva():
             fecha       = request.form["fecha_entrada"]
             hora        = request.form["hora_entrada"]
 
-            db.execute("""
-                INSERT INTO visitas (id_visita, id_paciente, id_visitante, id_sede, fecha_entrada, hora_entrada)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (id_visita, id_paciente, id_visitante, id_sede, fecha, hora))
+            db.execute("CALL sp_ins_visita(%s, %s, %s, %s, %s, %s)",
+                       (id_visita, id_paciente, id_visitante, id_sede, fecha, hora))
 
             flash("Visita registrada correctamente.", "success")
             return redirect(url_for("visitas"))
@@ -2571,15 +2534,9 @@ def sim_gps():
             longitud       = float(request.form["longitud"])
             nivel_bateria  = int(request.form.get("nivel_bateria") or 80)
 
-            next_id = db.scalar("SELECT COALESCE(MAX(id_lectura), 0) + 1 FROM lecturas_gps")
-            db.execute("""
-                INSERT INTO lecturas_gps
-                    (id_lectura, id_dispositivo, fecha_hora, latitud, longitud, nivel_bateria, geom)
-                VALUES (
-                    %s, %s, NOW(), %s, %s, %s,
-                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-                )
-            """, (next_id, id_dispositivo, latitud, longitud, nivel_bateria, longitud, latitud))
+            db.execute("CALL sp_ins_lectura_gps(%s, %s, %s, %s, NULL)",
+                       (id_dispositivo, latitud, longitud, nivel_bateria))
+            id_lectura = db.scalar("SELECT MAX(id_lectura) FROM lecturas_gps")
 
             # Check what alerts were generated by the triggers
             nuevas_alertas = db.query("""
@@ -2589,13 +2546,13 @@ def sim_gps():
                 LIMIT 3
             """)
             result = {
-                "id_lectura": next_id,
+                "id_lectura": id_lectura,
                 "latitud": latitud,
                 "longitud": longitud,
                 "nivel_bateria": nivel_bateria,
                 "alertas_generadas": nuevas_alertas,
             }
-            flash(f"Lectura GPS #{next_id} insertada. Triggers ejecutados.", "success")
+            flash(f"Lectura GPS #{id_lectura} insertada. Triggers ejecutados.", "success")
         except Exception as e:
             flash(f"Error al simular lectura GPS: {e}", "error")
 
@@ -2643,16 +2600,10 @@ def api_gps_lectura():
         return jsonify({"status": "error", "message": "Faltan campos: id_dispositivo, latitud, longitud"}), 400
 
     try:
-        next_id = db.scalar("SELECT COALESCE(MAX(id_lectura), 0) + 1 FROM lecturas_gps")
-        db.execute("""
-            INSERT INTO lecturas_gps
-                (id_lectura, id_dispositivo, fecha_hora, latitud, longitud, altura, nivel_bateria, geom)
-            VALUES (
-                %s, %s, NOW(), %s, %s, %s, %s,
-                ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-            )
-        """, (next_id, id_dispositivo, latitud, longitud, altura, nivel_bateria, longitud, latitud))
-        return jsonify({"status": "ok", "id_lectura": next_id})
+        db.execute("CALL sp_ins_lectura_gps(%s, %s, %s, %s, %s)",
+                   (id_dispositivo, latitud, longitud, nivel_bateria, altura))
+        id_lectura = db.scalar("SELECT MAX(id_lectura) FROM lecturas_gps")
+        return jsonify({"status": "ok", "id_lectura": id_lectura})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 422
 
