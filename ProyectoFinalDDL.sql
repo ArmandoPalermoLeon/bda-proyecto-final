@@ -18,52 +18,52 @@
 -- LIMPIEZA  (ejecutar en orden inverso de dependencias)
 -- =============================================================================
 
-DROP TABLE IF EXISTS bitacora_comedor       CASCADE;
-DROP TABLE IF EXISTS suministro_medicinas   CASCADE;
-DROP TABLE IF EXISTS suministros            CASCADE;
-DROP TABLE IF EXISTS inventario_medicinas   CASCADE;
-DROP TABLE IF EXISTS farmacias_proveedoras  CASCADE;
-DROP TABLE IF EXISTS entregas_externas      CASCADE;
-DROP TABLE IF EXISTS visitas                CASCADE;
-DROP TABLE IF EXISTS visitantes             CASCADE;
-DROP TABLE IF EXISTS sede_pacientes         CASCADE;
-DROP TABLE IF EXISTS sede_empleados         CASCADE;
-DROP TABLE IF EXISTS sede_zonas             CASCADE;
-DROP TABLE IF EXISTS sedes                  CASCADE;
-DROP TABLE IF EXISTS alerta_evento_origen   CASCADE;
-DROP TABLE IF EXISTS alertas                CASCADE;
-DROP TABLE IF EXISTS lecturas_nfc           CASCADE;
-DROP TABLE IF EXISTS receta_nfc             CASCADE;
-DROP TABLE IF EXISTS receta_medicamentos    CASCADE;
-DROP TABLE IF EXISTS recetas                CASCADE;
-DROP TABLE IF EXISTS detecciones_beacon     CASCADE;
-DROP TABLE IF EXISTS lecturas_gps           CASCADE;
-DROP TABLE IF EXISTS asignacion_nfc         CASCADE;
-DROP TABLE IF EXISTS asignacion_kit         CASCADE;
-DROP TABLE IF EXISTS turno_cuidador         CASCADE;
-DROP TABLE IF EXISTS beacon_zona            CASCADE;
-DROP TABLE IF EXISTS zona_beacons           CASCADE;
-DROP TABLE IF EXISTS gateways               CASCADE;
-DROP TABLE IF EXISTS zonas                  CASCADE;
-DROP TABLE IF EXISTS dispositivos           CASCADE;
-DROP TABLE IF EXISTS asignacion_cuidador    CASCADE;
-DROP TABLE IF EXISTS cocineros              CASCADE;
-DROP TABLE IF EXISTS cuidadores             CASCADE;
-DROP TABLE IF EXISTS empleados              CASCADE;
-DROP TABLE IF EXISTS paciente_contactos     CASCADE;
-DROP TABLE IF EXISTS contactos_emergencia   CASCADE;
-DROP TABLE IF EXISTS tiene_enfermedad       CASCADE;
-DROP TABLE IF EXISTS pacientes              CASCADE;
-DROP TABLE IF EXISTS medicamentos           CASCADE;
-DROP TABLE IF EXISTS enfermedades           CASCADE;
-DROP TABLE IF EXISTS estados_paciente       CASCADE;
-DROP TABLE IF EXISTS cat_tipo_dispositivo   CASCADE;
+DROP TABLE IF EXISTS bitacora_comedor CASCADE;
+DROP TABLE IF EXISTS suministro_medicinas CASCADE;
+DROP TABLE IF EXISTS suministros CASCADE;
+DROP TABLE IF EXISTS inventario_medicinas CASCADE;
+DROP TABLE IF EXISTS farmacias_proveedoras CASCADE;
+DROP TABLE IF EXISTS entregas_externas CASCADE;
+DROP TABLE IF EXISTS visitas CASCADE;
+DROP TABLE IF EXISTS visitantes CASCADE;
+DROP TABLE IF EXISTS sede_pacientes CASCADE;
+DROP TABLE IF EXISTS sede_empleados CASCADE;
+DROP TABLE IF EXISTS sede_zonas CASCADE;
+DROP TABLE IF EXISTS sedes CASCADE;
+DROP TABLE IF EXISTS alerta_evento_origen CASCADE;
+DROP TABLE IF EXISTS alertas CASCADE;
+DROP TABLE IF EXISTS lecturas_nfc CASCADE;
+DROP TABLE IF EXISTS receta_nfc CASCADE;
+DROP TABLE IF EXISTS receta_medicamentos CASCADE;
+DROP TABLE IF EXISTS recetas CASCADE;
+DROP TABLE IF EXISTS detecciones_beacon CASCADE;
+DROP TABLE IF EXISTS lecturas_gps CASCADE;
+DROP TABLE IF EXISTS asignacion_nfc CASCADE;
+DROP TABLE IF EXISTS asignacion_kit CASCADE;
+DROP TABLE IF EXISTS turno_cuidador CASCADE;
+DROP TABLE IF EXISTS beacon_zona CASCADE;
+DROP TABLE IF EXISTS zona_beacons CASCADE;
+DROP TABLE IF EXISTS gateways CASCADE;
+DROP TABLE IF EXISTS zonas CASCADE;
+DROP TABLE IF EXISTS dispositivos CASCADE;
+DROP TABLE IF EXISTS asignacion_cuidador CASCADE;
+DROP TABLE IF EXISTS cocineros CASCADE;
+DROP TABLE IF EXISTS cuidadores CASCADE;
+DROP TABLE IF EXISTS empleados CASCADE;
+DROP TABLE IF EXISTS paciente_contactos CASCADE;
+DROP TABLE IF EXISTS contactos_emergencia CASCADE;
+DROP TABLE IF EXISTS tiene_enfermedad CASCADE;
+DROP TABLE IF EXISTS pacientes CASCADE;
+DROP TABLE IF EXISTS medicamentos CASCADE;
+DROP TABLE IF EXISTS enfermedades CASCADE;
+DROP TABLE IF EXISTS estados_paciente CASCADE;
+DROP TABLE IF EXISTS cat_tipo_dispositivo CASCADE;
 DROP TABLE IF EXISTS cat_estado_dispositivo CASCADE;
-DROP TABLE IF EXISTS cat_tipo_alerta        CASCADE;
-DROP TABLE IF EXISTS cat_estado_alerta      CASCADE;
-DROP TABLE IF EXISTS cat_estado_suministro  CASCADE;
-DROP TABLE IF EXISTS cat_estado_entrega     CASCADE;
-DROP TABLE IF EXISTS cat_turno_comedor      CASCADE;
+DROP TABLE IF EXISTS cat_tipo_alerta CASCADE;
+DROP TABLE IF EXISTS cat_estado_alerta CASCADE;
+DROP TABLE IF EXISTS cat_estado_suministro CASCADE;
+DROP TABLE IF EXISTS cat_estado_entrega CASCADE;
+DROP TABLE IF EXISTS cat_turno_comedor CASCADE;
 
 -- DROP TRIGGER IF EXISTS trg_cobertura_zona ON detecciones_beacon;
 -- DROP FUNCTION IF EXISTS fn_verificar_cobertura_zona();
@@ -83,59 +83,59 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- =============================================================================
 
 -- Catálogo existente — estados de paciente
-CREATE TABLE estados_paciente (
-    id_estado   INTEGER      PRIMARY KEY,
-    desc_estado VARCHAR(50)  NOT NULL,
-    CONSTRAINT uq_desc_estado UNIQUE (desc_estado)
+CREATE TABLE estados_paciente(
+  id_estado INTEGER PRIMARY KEY,
+  desc_estado VARCHAR(50) NOT NULL,
+  CONSTRAINT uq_desc_estado UNIQUE (desc_estado)
 );
 
 -- NUEVO — tipo de dispositivo IoT
-CREATE TABLE cat_tipo_dispositivo (
-    tipo  VARCHAR(10)  PRIMARY KEY
+CREATE TABLE cat_tipo_dispositivo(
+  tipo VARCHAR(10) PRIMARY KEY
 );
 
 -- NUEVO — estado operativo de dispositivo
-CREATE TABLE cat_estado_dispositivo (
-    estado  VARCHAR(20)  PRIMARY KEY
+CREATE TABLE cat_estado_dispositivo(
+  estado VARCHAR(20) PRIMARY KEY
 );
 
 -- NUEVO — tipo de alerta clínica
-CREATE TABLE cat_tipo_alerta (
-    tipo_alerta  VARCHAR(30)  PRIMARY KEY
+CREATE TABLE cat_tipo_alerta(
+  tipo_alerta VARCHAR(30) PRIMARY KEY
 );
 
 -- NUEVO — estado de resolución de alerta
-CREATE TABLE cat_estado_alerta (
-    estatus  VARCHAR(20)  PRIMARY KEY
+CREATE TABLE cat_estado_alerta(
+  estatus VARCHAR(20) PRIMARY KEY
 );
 
 -- NUEVO — estado de orden de suministro
-CREATE TABLE cat_estado_suministro (
-    estado  VARCHAR(20)  PRIMARY KEY
+CREATE TABLE cat_estado_suministro(
+  estado VARCHAR(20) PRIMARY KEY
 );
 
 -- NUEVO — estado de entrega externa
-CREATE TABLE cat_estado_entrega (
-    estado  VARCHAR(20)  PRIMARY KEY
+CREATE TABLE cat_estado_entrega(
+  estado VARCHAR(20) PRIMARY KEY
 );
 
 -- NUEVO — turno del comedor
-CREATE TABLE cat_turno_comedor (
-    turno  VARCHAR(20)  PRIMARY KEY
+CREATE TABLE cat_turno_comedor(
+  turno VARCHAR(20) PRIMARY KEY
 );
 
 -- Catálogos de dominio clínico
-CREATE TABLE enfermedades (
-    id_enfermedad     INTEGER       PRIMARY KEY,
-    nombre_enfermedad VARCHAR(100)  NOT NULL,
-    CONSTRAINT uq_nombre_enfermedad UNIQUE (nombre_enfermedad)
+CREATE TABLE enfermedades(
+  id_enfermedad INTEGER PRIMARY KEY,
+  nombre_enfermedad VARCHAR(100) NOT NULL,
+  CONSTRAINT uq_nombre_enfermedad UNIQUE (nombre_enfermedad)
 );
 
-CREATE TABLE medicamentos (
-    GTIN               VARCHAR(20)   PRIMARY KEY,
-    nombre_medicamento VARCHAR(100)  NOT NULL,
-    descripcion        VARCHAR(255),
-    CONSTRAINT uq_nombre_medicamento UNIQUE (nombre_medicamento)
+CREATE TABLE medicamentos(
+  GTIN VARCHAR(20) PRIMARY KEY,
+  nombre_medicamento VARCHAR(100) NOT NULL,
+  descripcion VARCHAR(255),
+  CONSTRAINT uq_nombre_medicamento UNIQUE (nombre_medicamento)
 );
 
 
@@ -143,57 +143,57 @@ CREATE TABLE medicamentos (
 -- BLOQUE 2: PACIENTES Y SUS RELACIONES
 -- =============================================================================
 
-CREATE TABLE pacientes (
-    id_paciente      INTEGER      PRIMARY KEY,
-    nombre           VARCHAR(80)  NOT NULL,
-    apellido_p       VARCHAR(80)  NOT NULL,
-    apellido_m       VARCHAR(80)  NOT NULL,
-    fecha_nacimiento DATE         NOT NULL,
-    id_estado        INTEGER      NOT NULL,
-    CONSTRAINT fk_paciente_estado
-        FOREIGN KEY (id_estado) REFERENCES estados_paciente (id_estado)
-        ON DELETE RESTRICT ON UPDATE CASCADE
+CREATE TABLE pacientes(
+  id_paciente INTEGER PRIMARY KEY,
+  nombre VARCHAR(80) NOT NULL,
+  apellido_p VARCHAR(80) NOT NULL,
+  apellido_m VARCHAR(80) NOT NULL,
+  fecha_nacimiento DATE NOT NULL,
+  id_estado INTEGER NOT NULL,
+  CONSTRAINT fk_paciente_estado
+    FOREIGN KEY (id_estado) REFERENCES estados_paciente (id_estado)
+    ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
-CREATE TABLE tiene_enfermedad (
-    id_paciente   INTEGER  NOT NULL,
-    id_enfermedad INTEGER  NOT NULL,
-    fecha_diag    DATE     NOT NULL,
-    CONSTRAINT pk_tiene_enfermedad PRIMARY KEY (id_paciente, id_enfermedad),
-    CONSTRAINT fk_te_paciente
-        FOREIGN KEY (id_paciente)   REFERENCES pacientes    (id_paciente)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_te_enfermedad
-        FOREIGN KEY (id_enfermedad) REFERENCES enfermedades (id_enfermedad)
-        ON DELETE RESTRICT
+CREATE TABLE tiene_enfermedad(
+  id_paciente INTEGER NOT NULL,
+  id_enfermedad INTEGER NOT NULL,
+  fecha_diag DATE NOT NULL,
+  CONSTRAINT pk_tiene_enfermedad PRIMARY KEY (id_paciente, id_enfermedad),
+  CONSTRAINT fk_te_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_te_enfermedad
+    FOREIGN KEY (id_enfermedad) REFERENCES enfermedades (id_enfermedad)
+    ON DELETE RESTRICT
 );
 
-CREATE TABLE contactos_emergencia (
-    id_contacto    INTEGER      PRIMARY KEY,
-    nombre         VARCHAR(80)  NOT NULL,
-    apellido_p     VARCHAR(80)  NOT NULL,
-    apellido_m     VARCHAR(80),
-    telefono       VARCHAR(20)  NOT NULL,
-    fecha_nac      DATE,
-    CURP_pasaporte VARCHAR(20),
-    relacion       VARCHAR(50)  NOT NULL,
-    email          VARCHAR(100),          -- acceso al portal familiar
-    pin_acceso     VARCHAR(20),           -- PIN en texto plano (demo)
-    CONSTRAINT uq_contacto_email UNIQUE (email)
+CREATE TABLE contactos_emergencia(
+  id_contacto INTEGER PRIMARY KEY,
+  nombre VARCHAR(80) NOT NULL,
+  apellido_p VARCHAR(80) NOT NULL,
+  apellido_m VARCHAR(80),
+  telefono VARCHAR(20) NOT NULL,
+  fecha_nac DATE,
+  CURP_pasaporte VARCHAR(20),
+  relacion VARCHAR(50) NOT NULL,
+  email VARCHAR(100),        -- acceso al portal familiar
+  pin_acceso VARCHAR(20),    -- PIN en texto plano (demo)
+  CONSTRAINT uq_contacto_email UNIQUE (email)
 );
 
-CREATE TABLE paciente_contactos (
-    id_paciente  INTEGER  NOT NULL,
-    id_contacto  INTEGER  NOT NULL,
-    prioridad    INTEGER  NOT NULL CHECK (prioridad > 0),
-    CONSTRAINT pk_paciente_contactos PRIMARY KEY (id_paciente, id_contacto),
-    CONSTRAINT fk_pc_paciente
-        FOREIGN KEY (id_paciente) REFERENCES pacientes            (id_paciente)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_pc_contacto
-        FOREIGN KEY (id_contacto) REFERENCES contactos_emergencia (id_contacto)
-        ON DELETE RESTRICT,
-    CONSTRAINT uq_pc_prioridad UNIQUE (id_paciente, prioridad)
+CREATE TABLE paciente_contactos(
+  id_paciente INTEGER NOT NULL,
+  id_contacto INTEGER NOT NULL,
+  prioridad INTEGER NOT NULL CHECK (prioridad > 0),
+  CONSTRAINT pk_paciente_contactos PRIMARY KEY (id_paciente, id_contacto),
+  CONSTRAINT fk_pc_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_pc_contacto
+    FOREIGN KEY (id_contacto) REFERENCES contactos_emergencia (id_contacto)
+    ON DELETE RESTRICT,
+  CONSTRAINT uq_pc_prioridad UNIQUE (id_paciente, prioridad)
 );
 
 
@@ -201,46 +201,46 @@ CREATE TABLE paciente_contactos (
 -- BLOQUE 3: EMPLEADOS Y ROLES
 -- =============================================================================
 
-CREATE TABLE empleados (
-    id_empleado    INTEGER      PRIMARY KEY,
-    nombre         VARCHAR(80)  NOT NULL,
-    apellido_p     VARCHAR(80)  NOT NULL,
-    apellido_m     VARCHAR(80),
-    CURP_pasaporte VARCHAR(20)  NOT NULL,
-    fecha_nac      DATE,
-    telefono       VARCHAR(20),
-    CONSTRAINT uq_empleado_curp UNIQUE (CURP_pasaporte)
+CREATE TABLE empleados(
+  id_empleado INTEGER PRIMARY KEY,
+  nombre VARCHAR(80) NOT NULL,
+  apellido_p VARCHAR(80) NOT NULL,
+  apellido_m VARCHAR(80),
+  CURP_pasaporte VARCHAR(20) NOT NULL,
+  fecha_nac DATE,
+  telefono VARCHAR(20),
+  CONSTRAINT uq_empleado_curp UNIQUE (CURP_pasaporte)
 );
 
-CREATE TABLE cuidadores (
-    id_empleado          INTEGER       PRIMARY KEY,
-    certificacion_medica VARCHAR(100),
-    especialidad         VARCHAR(100),
-    CONSTRAINT fk_cuidador_empleado
-        FOREIGN KEY (id_empleado) REFERENCES empleados (id_empleado)
-        ON DELETE CASCADE
+CREATE TABLE cuidadores(
+  id_empleado INTEGER PRIMARY KEY,
+  certificacion_medica VARCHAR(100),
+  especialidad VARCHAR(100),
+  CONSTRAINT fk_cuidador_empleado
+    FOREIGN KEY (id_empleado) REFERENCES empleados (id_empleado)
+    ON DELETE CASCADE
 );
 
-CREATE TABLE cocineros (
-    id_empleado INTEGER PRIMARY KEY,
-    CONSTRAINT fk_cocinero_empleado
-        FOREIGN KEY (id_empleado) REFERENCES empleados (id_empleado)
-        ON DELETE CASCADE
+CREATE TABLE cocineros(
+  id_empleado INTEGER PRIMARY KEY,
+  CONSTRAINT fk_cocinero_empleado
+    FOREIGN KEY (id_empleado) REFERENCES empleados (id_empleado)
+    ON DELETE CASCADE
 );
 
-CREATE TABLE asignacion_cuidador (
-    id_asig_cuidador INTEGER  PRIMARY KEY,
-    id_cuidador      INTEGER  NOT NULL,
-    id_paciente      INTEGER  NOT NULL,
-    fecha_inicio     DATE     NOT NULL,
-    fecha_fin        DATE,
-    CONSTRAINT fk_ac_cuidador
-        FOREIGN KEY (id_cuidador)  REFERENCES cuidadores (id_empleado)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_ac_paciente
-        FOREIGN KEY (id_paciente)  REFERENCES pacientes  (id_paciente)
-        ON DELETE RESTRICT,
-    CONSTRAINT chk_ac_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
+CREATE TABLE asignacion_cuidador(
+  id_asig_cuidador INTEGER PRIMARY KEY,
+  id_cuidador INTEGER NOT NULL,
+  id_paciente INTEGER NOT NULL,
+  fecha_inicio DATE NOT NULL,
+  fecha_fin DATE,
+  CONSTRAINT fk_ac_cuidador
+    FOREIGN KEY (id_cuidador) REFERENCES cuidadores (id_empleado)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_ac_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE RESTRICT,
+  CONSTRAINT chk_ac_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
 );
 
 
@@ -249,26 +249,26 @@ CREATE TABLE asignacion_cuidador (
 -- tipo y estado ahora referencian catálogos en lugar de CHECK con literales
 -- =============================================================================
 
-CREATE TABLE dispositivos (
-    id_dispositivo  INTEGER      PRIMARY KEY,
-    id_serial       VARCHAR(50)  NOT NULL,
-    modelo          VARCHAR(50)  NOT NULL,
-    tipo            VARCHAR(10)  NOT NULL,
-    estado          VARCHAR(20)  NOT NULL DEFAULT 'Activo',
-    ultima_conexion TIMESTAMP,
-    CONSTRAINT uq_dispositivo_serial UNIQUE (id_serial),
-    CONSTRAINT fk_disp_tipo   FOREIGN KEY (tipo)   REFERENCES cat_tipo_dispositivo   (tipo)   ON UPDATE CASCADE,
-    CONSTRAINT fk_disp_estado FOREIGN KEY (estado) REFERENCES cat_estado_dispositivo (estado) ON UPDATE CASCADE
+CREATE TABLE dispositivos(
+  id_dispositivo INTEGER PRIMARY KEY,
+  id_serial VARCHAR(50) NOT NULL,
+  modelo VARCHAR(50) NOT NULL,
+  tipo VARCHAR(10) NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'Activo',
+  ultima_conexion TIMESTAMP,
+  CONSTRAINT uq_dispositivo_serial UNIQUE (id_serial),
+  CONSTRAINT fk_disp_tipo FOREIGN KEY (tipo) REFERENCES cat_tipo_dispositivo (tipo) ON UPDATE CASCADE,
+  CONSTRAINT fk_disp_estado FOREIGN KEY (estado) REFERENCES cat_estado_dispositivo (estado) ON UPDATE CASCADE
 );
 
-CREATE TABLE zonas (
-    id_zona         INTEGER       PRIMARY KEY,
-    nombre_zona     VARCHAR(100)  NOT NULL,
-    latitud_centro  NUMERIC(10,6) NOT NULL,
-    longitud_centro NUMERIC(10,6) NOT NULL,
-    radio_metros    NUMERIC(8,2)  NOT NULL CHECK (radio_metros > 0),
-    geom            GEOGRAPHY(Point, 4326),          -- columna PostGIS para ST_DWithin
-    CONSTRAINT uq_nombre_zona UNIQUE (nombre_zona)
+CREATE TABLE zonas(
+  id_zona INTEGER PRIMARY KEY,
+  nombre_zona VARCHAR(100) NOT NULL,
+  latitud_centro NUMERIC(10,6) NOT NULL,
+  longitud_centro NUMERIC(10,6) NOT NULL,
+  radio_metros NUMERIC(8,2) NOT NULL CHECK (radio_metros > 0),
+  geom GEOGRAPHY(Point, 4326),   -- columna PostGIS para ST_DWithin
+  CONSTRAINT uq_nombre_zona UNIQUE (nombre_zona)
 );
 
 -- gateways y zona_beacons eliminados: la arquitectura BLE ya no usa gateways fijos.
@@ -276,68 +276,67 @@ CREATE TABLE zonas (
 -- actúa como receptor móvil durante las rondas. No hay asignación per-paciente.
 
 -- NUEVO: vincula cada beacon fijo a la zona donde está instalado
-CREATE TABLE beacon_zona (
-    id_dispositivo  INTEGER  PRIMARY KEY,
-    id_zona         INTEGER  NOT NULL,
-    CONSTRAINT fk_bz_dispositivo
-        FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_bz_zona
-        FOREIGN KEY (id_zona)        REFERENCES zonas         (id_zona)
-        ON DELETE RESTRICT
+CREATE TABLE beacon_zona(
+  id_dispositivo INTEGER PRIMARY KEY,
+  id_zona INTEGER NOT NULL,
+  CONSTRAINT fk_bz_dispositivo
+    FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_bz_zona
+    FOREIGN KEY (id_zona) REFERENCES zonas (id_zona)
+    ON DELETE RESTRICT
 );
 
 -- NUEVO: turnos semanales recurrentes — qué cuidador cubre qué zona y en qué horario
-CREATE TABLE turno_cuidador (
-    id_turno    INTEGER  PRIMARY KEY,
-    id_cuidador INTEGER  NOT NULL,
-    id_zona     INTEGER  NOT NULL,
-    hora_inicio TIME     NOT NULL,
-    hora_fin    TIME     NOT NULL,
-    lunes       BOOLEAN  NOT NULL DEFAULT FALSE,
-    martes      BOOLEAN  NOT NULL DEFAULT FALSE,
-    miercoles   BOOLEAN  NOT NULL DEFAULT FALSE,
-    jueves      BOOLEAN  NOT NULL DEFAULT FALSE,
-    viernes     BOOLEAN  NOT NULL DEFAULT FALSE,
-    sabado      BOOLEAN  NOT NULL DEFAULT FALSE,
-    domingo     BOOLEAN  NOT NULL DEFAULT FALSE,
-    activo      BOOLEAN  NOT NULL DEFAULT TRUE,
-    CONSTRAINT fk_tc_cuidador
-        FOREIGN KEY (id_cuidador) REFERENCES cuidadores (id_empleado)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_tc_zona
-        FOREIGN KEY (id_zona)     REFERENCES zonas      (id_zona)
-        ON DELETE RESTRICT,
-    CONSTRAINT chk_tc_horas CHECK (hora_fin > hora_inicio)
+CREATE TABLE turno_cuidador(
+  id_turno INTEGER PRIMARY KEY,
+  id_cuidador INTEGER NOT NULL,
+  id_zona INTEGER NOT NULL,
+  hora_inicio TIME NOT NULL,
+  hora_fin TIME NOT NULL,
+  lunes BOOLEAN NOT NULL DEFAULT FALSE,
+  martes BOOLEAN NOT NULL DEFAULT FALSE,
+  miercoles BOOLEAN NOT NULL DEFAULT FALSE,
+  jueves BOOLEAN NOT NULL DEFAULT FALSE,
+  viernes BOOLEAN NOT NULL DEFAULT FALSE,
+  sabado BOOLEAN NOT NULL DEFAULT FALSE,
+  domingo BOOLEAN NOT NULL DEFAULT FALSE,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  CONSTRAINT fk_tc_cuidador
+    FOREIGN KEY (id_cuidador) REFERENCES cuidadores (id_empleado)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_tc_zona
+    FOREIGN KEY (id_zona) REFERENCES zonas (id_zona)
+    ON DELETE RESTRICT,
+  CONSTRAINT chk_tc_horas CHECK (hora_fin > hora_inicio)
 );
 
-CREATE TABLE asignacion_kit (
-    id_monitoreo       INTEGER  PRIMARY KEY,
-    id_paciente        INTEGER  NOT NULL,
-    id_dispositivo_gps INTEGER  NOT NULL,
-    fecha_entrega      DATE,
-    fecha_fin          DATE,
-    CONSTRAINT fk_ak_paciente
-        FOREIGN KEY (id_paciente)        REFERENCES pacientes    (id_paciente)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_ak_gps
-        FOREIGN KEY (id_dispositivo_gps) REFERENCES dispositivos (id_dispositivo)
-        ON DELETE RESTRICT,
-    CONSTRAINT chk_ak_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_entrega)
+CREATE TABLE asignacion_kit(
+  id_monitoreo INTEGER PRIMARY KEY,
+  id_paciente INTEGER NOT NULL,
+  id_dispositivo_gps INTEGER NOT NULL,
+  fecha_entrega DATE,
+  fecha_fin DATE,
+  CONSTRAINT fk_ak_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_ak_gps
+    FOREIGN KEY (id_dispositivo_gps) REFERENCES dispositivos (id_dispositivo)
+    ON DELETE RESTRICT,
+  CONSTRAINT chk_ak_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_entrega)
 );
 
-
-CREATE TABLE asignacion_nfc (
-    id_asignacion  SERIAL  PRIMARY KEY,
-    id_paciente    INTEGER NOT NULL,
-    id_dispositivo INTEGER NOT NULL,
-    fecha_inicio   DATE    NOT NULL DEFAULT CURRENT_DATE,
-    fecha_fin      DATE,
-    CONSTRAINT fk_anfc_paciente
-        FOREIGN KEY (id_paciente)    REFERENCES pacientes    (id_paciente),
-    CONSTRAINT fk_anfc_dispositivo
-        FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo),
-    CONSTRAINT chk_anfc_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
+CREATE TABLE asignacion_nfc(
+  id_asignacion SERIAL PRIMARY KEY,
+  id_paciente INTEGER NOT NULL,
+  id_dispositivo INTEGER NOT NULL,
+  fecha_inicio DATE NOT NULL DEFAULT CURRENT_DATE,
+  fecha_fin DATE,
+  CONSTRAINT fk_anfc_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente),
+  CONSTRAINT fk_anfc_dispositivo
+    FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo),
+  CONSTRAINT chk_anfc_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
 );
 
 
@@ -347,45 +346,45 @@ CREATE TABLE asignacion_nfc (
 --         para indicar a quién pertenece la prescripción (relación 1:1).
 -- =============================================================================
 
-CREATE TABLE recetas (
-    id_receta   INTEGER      PRIMARY KEY,
-    fecha       DATE         NOT NULL,
-    id_paciente INTEGER      NOT NULL,
-    estado      VARCHAR(20)  NOT NULL DEFAULT 'Activa',  -- 'Activa', 'Cerrada'
-    CONSTRAINT fk_receta_paciente
-        FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
-        ON DELETE RESTRICT
+CREATE TABLE recetas(
+  id_receta INTEGER PRIMARY KEY,
+  fecha DATE NOT NULL,
+  id_paciente INTEGER NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'Activa',  -- 'Activa', 'Cerrada'
+  CONSTRAINT fk_receta_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE RESTRICT
 );
 
-CREATE TABLE receta_medicamentos (
-    id_detalle       INTEGER      PRIMARY KEY,
-    id_receta        INTEGER      NOT NULL,
-    GTIN             VARCHAR(20)  NOT NULL,
-    dosis            VARCHAR(50)  NOT NULL,
-    frecuencia_horas INTEGER      NOT NULL CHECK (frecuencia_horas > 0),
-    CONSTRAINT fk_rm_receta
-        FOREIGN KEY (id_receta) REFERENCES recetas      (id_receta)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_rm_medicamento
-        FOREIGN KEY (GTIN)      REFERENCES medicamentos (GTIN)
-        ON DELETE RESTRICT
+CREATE TABLE receta_medicamentos(
+  id_detalle INTEGER PRIMARY KEY,
+  id_receta INTEGER NOT NULL,
+  GTIN VARCHAR(20) NOT NULL,
+  dosis VARCHAR(50) NOT NULL,
+  frecuencia_horas INTEGER NOT NULL CHECK (frecuencia_horas > 0),
+  CONSTRAINT fk_rm_receta
+    FOREIGN KEY (id_receta) REFERENCES recetas (id_receta)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_rm_medicamento
+    FOREIGN KEY (GTIN) REFERENCES medicamentos (GTIN)
+    ON DELETE RESTRICT
 );
 
 -- Asigna un dispositivo NFC para gestionar la lectura de una receta
-CREATE TABLE receta_nfc (
-    id_receta            INTEGER  NOT NULL,
-    id_dispositivo       INTEGER  NOT NULL,
-    fecha_inicio_gestion DATE     NOT NULL,
-    fecha_fin_gestion    DATE,
-    CONSTRAINT pk_receta_nfc PRIMARY KEY (id_receta, id_dispositivo),
-    CONSTRAINT fk_rn_receta
-        FOREIGN KEY (id_receta)       REFERENCES recetas      (id_receta)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_rn_dispositivo
-        FOREIGN KEY (id_dispositivo)  REFERENCES dispositivos (id_dispositivo)
-        ON DELETE RESTRICT,
-    CONSTRAINT chk_rn_fechas
-        CHECK (fecha_fin_gestion IS NULL OR fecha_fin_gestion >= fecha_inicio_gestion)
+CREATE TABLE receta_nfc(
+  id_receta INTEGER NOT NULL,
+  id_dispositivo INTEGER NOT NULL,
+  fecha_inicio_gestion DATE NOT NULL,
+  fecha_fin_gestion DATE,
+  CONSTRAINT pk_receta_nfc PRIMARY KEY (id_receta, id_dispositivo),
+  CONSTRAINT fk_rn_receta
+    FOREIGN KEY (id_receta) REFERENCES recetas (id_receta)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_rn_dispositivo
+    FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
+    ON DELETE RESTRICT,
+  CONSTRAINT chk_rn_fechas
+    CHECK (fecha_fin_gestion IS NULL OR fecha_fin_gestion >= fecha_inicio_gestion)
 );
 
 
@@ -395,96 +394,96 @@ CREATE TABLE receta_nfc (
 -- NUEVO: alerta_evento_origen — trazabilidad del evento que disparó la alerta
 -- =============================================================================
 
-CREATE TABLE lecturas_gps (
-    id_lectura     INTEGER        PRIMARY KEY,
-    id_dispositivo INTEGER        NOT NULL,
-    fecha_hora     TIMESTAMP      NOT NULL,
-    latitud        NUMERIC(10,6)  NOT NULL,
-    longitud       NUMERIC(10,6)  NOT NULL,
-    altura         NUMERIC(8,2),
-    nivel_bateria  INTEGER        CHECK (nivel_bateria BETWEEN 0 AND 100),
-    geom           GEOGRAPHY(Point, 4326),          -- columna PostGIS para cálculos de distancia
-    CONSTRAINT fk_lgps_dispositivo
-        FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
-        ON DELETE RESTRICT,
-    CONSTRAINT uq_lgps_instante UNIQUE (id_dispositivo, fecha_hora)
+CREATE TABLE lecturas_gps(
+  id_lectura INTEGER PRIMARY KEY,
+  id_dispositivo INTEGER NOT NULL,
+  fecha_hora TIMESTAMP NOT NULL,
+  latitud NUMERIC(10,6) NOT NULL,
+  longitud NUMERIC(10,6) NOT NULL,
+  altura NUMERIC(8,2),
+  nivel_bateria INTEGER CHECK (nivel_bateria BETWEEN 0 AND 100),
+  geom GEOGRAPHY(Point, 4326),   -- columna PostGIS para cálculos de distancia
+  CONSTRAINT fk_lgps_dispositivo
+    FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
+    ON DELETE RESTRICT,
+  CONSTRAINT uq_lgps_instante UNIQUE (id_dispositivo, fecha_hora)
 );
 
 -- detecciones_beacon: registra qué beacons detectó el teléfono del cuidador durante rondas.
 -- Ya no referencia gateways (eliminados). id_cuidador identifica quién realizó la ronda.
-CREATE TABLE detecciones_beacon (
-    id_deteccion   INTEGER    PRIMARY KEY,
-    id_dispositivo INTEGER    NOT NULL,
-    id_cuidador    INTEGER,              -- cuidador que realizó la ronda (NULL si anónimo)
-    fecha_hora     TIMESTAMP  NOT NULL,
-    rssi           INTEGER    NOT NULL,
-    CONSTRAINT fk_db_dispositivo
-        FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_db_cuidador
-        FOREIGN KEY (id_cuidador)    REFERENCES cuidadores   (id_empleado)
-        ON DELETE SET NULL,
-    CONSTRAINT uq_db_instante UNIQUE (id_dispositivo, fecha_hora)
+CREATE TABLE detecciones_beacon(
+  id_deteccion INTEGER PRIMARY KEY,
+  id_dispositivo INTEGER NOT NULL,
+  id_cuidador INTEGER,    -- cuidador que realizó la ronda (NULL si anónimo)
+  fecha_hora TIMESTAMP NOT NULL,
+  rssi INTEGER NOT NULL,
+  CONSTRAINT fk_db_dispositivo
+    FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_db_cuidador
+    FOREIGN KEY (id_cuidador) REFERENCES cuidadores (id_empleado)
+    ON DELETE SET NULL,
+  CONSTRAINT uq_db_instante UNIQUE (id_dispositivo, fecha_hora)
 );
 
 -- NUEVO: lecturas de chips NFC para adherencia terapéutica
 -- Separado de detecciones_beacon: beacon == presencia/ubicación, NFC == medicación
-CREATE TABLE lecturas_nfc (
-    id_lectura_nfc INTEGER    PRIMARY KEY,
-    id_dispositivo INTEGER    NOT NULL,   -- dispositivo tipo NFC
-    id_receta      INTEGER    NOT NULL,   -- receta que se está verificando
-    fecha_hora     TIMESTAMP  NOT NULL,
-    tipo_lectura   VARCHAR(30) NOT NULL DEFAULT 'Administración',
-                              -- 'Administración', 'Verificación', 'Rechazo'
-    resultado      VARCHAR(20) NOT NULL DEFAULT 'Exitosa',
-                              -- 'Exitosa', 'Fallida', 'Sin respuesta'
-    CONSTRAINT fk_lnfc_dispositivo
-        FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_lnfc_receta
-        FOREIGN KEY (id_receta)      REFERENCES recetas       (id_receta)
-        ON DELETE RESTRICT,
-    CONSTRAINT uq_lnfc_instante UNIQUE (id_dispositivo, id_receta, fecha_hora)
+CREATE TABLE lecturas_nfc(
+  id_lectura_nfc INTEGER PRIMARY KEY,
+  id_dispositivo INTEGER NOT NULL,    -- dispositivo tipo NFC
+  id_receta INTEGER NOT NULL,         -- receta que se está verificando
+  fecha_hora TIMESTAMP NOT NULL,
+  tipo_lectura VARCHAR(30) NOT NULL DEFAULT 'Administración',
+                            -- 'Administración', 'Verificación', 'Rechazo'
+  resultado VARCHAR(20) NOT NULL DEFAULT 'Exitosa',
+                            -- 'Exitosa', 'Fallida', 'Sin respuesta'
+  CONSTRAINT fk_lnfc_dispositivo
+    FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_lnfc_receta
+    FOREIGN KEY (id_receta) REFERENCES recetas (id_receta)
+    ON DELETE RESTRICT,
+  CONSTRAINT uq_lnfc_instante UNIQUE (id_dispositivo, id_receta, fecha_hora)
 );
 
-CREATE TABLE alertas (
-    id_alerta   INTEGER      PRIMARY KEY,
-    id_paciente INTEGER,                  -- NULL para alertas de zona (sin paciente específico)
-    id_zona     INTEGER,                  -- NULL para alertas de paciente; poblado por trigger
-    tipo_alerta VARCHAR(30)  NOT NULL,
-    fecha_hora  TIMESTAMP    NOT NULL,
-    estatus     VARCHAR(20)  NOT NULL DEFAULT 'Activa',
-    CONSTRAINT fk_alerta_paciente
-        FOREIGN KEY (id_paciente)  REFERENCES pacientes         (id_paciente)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_alerta_zona
-        FOREIGN KEY (id_zona)      REFERENCES zonas             (id_zona)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_alerta_tipo
-        FOREIGN KEY (tipo_alerta)  REFERENCES cat_tipo_alerta   (tipo_alerta)
-        ON UPDATE CASCADE,
-    CONSTRAINT fk_alerta_estatus
-        FOREIGN KEY (estatus)      REFERENCES cat_estado_alerta  (estatus)
-        ON UPDATE CASCADE
+CREATE TABLE alertas(
+  id_alerta INTEGER PRIMARY KEY,
+  id_paciente INTEGER,    -- NULL para alertas de zona (sin paciente específico)
+  id_zona INTEGER,        -- NULL para alertas de paciente; poblado por trigger
+  tipo_alerta VARCHAR(30) NOT NULL,
+  fecha_hora TIMESTAMP NOT NULL,
+  estatus VARCHAR(20) NOT NULL DEFAULT 'Activa',
+  CONSTRAINT fk_alerta_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_alerta_zona
+    FOREIGN KEY (id_zona) REFERENCES zonas (id_zona)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_alerta_tipo
+    FOREIGN KEY (tipo_alerta) REFERENCES cat_tipo_alerta (tipo_alerta)
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_alerta_estatus
+    FOREIGN KEY (estatus) REFERENCES cat_estado_alerta (estatus)
+    ON UPDATE CASCADE
 );
 
 -- NUEVO: vincula cada alerta con el evento IoT que la originó
 -- BEACON eliminado como tipo_evento: las detecciones BLE no generan alertas de seguridad.
 -- Alertas vienen de GPS (salida de zona, batería baja, caída) o SOS (botón físico) o NFC.
-CREATE TABLE alerta_evento_origen (
-    id_origen       INTEGER      PRIMARY KEY,
-    id_alerta       INTEGER      NOT NULL,
-    tipo_evento     VARCHAR(10)  NOT NULL,   -- 'GPS', 'NFC', 'SOS'
-    id_lectura_gps  INTEGER,                 -- FK si origen es GPS
-    regla_disparada VARCHAR(200),            -- descripción de la regla
-    CONSTRAINT fk_aeo_alerta
-        FOREIGN KEY (id_alerta)      REFERENCES alertas      (id_alerta)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_aeo_gps
-        FOREIGN KEY (id_lectura_gps) REFERENCES lecturas_gps (id_lectura)
-        ON DELETE RESTRICT,
-    CONSTRAINT uq_aeo_alerta UNIQUE (id_alerta),
-    CONSTRAINT chk_aeo_tipo CHECK (tipo_evento IN ('GPS', 'NFC', 'SOS'))
+CREATE TABLE alerta_evento_origen(
+  id_origen INTEGER PRIMARY KEY,
+  id_alerta INTEGER NOT NULL,
+  tipo_evento VARCHAR(10) NOT NULL,    -- 'GPS', 'NFC', 'SOS'
+  id_lectura_gps INTEGER,              -- FK si origen es GPS
+  regla_disparada VARCHAR(200),        -- descripción de la regla
+  CONSTRAINT fk_aeo_alerta
+    FOREIGN KEY (id_alerta) REFERENCES alertas (id_alerta)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_aeo_gps
+    FOREIGN KEY (id_lectura_gps) REFERENCES lecturas_gps (id_lectura)
+    ON DELETE RESTRICT,
+  CONSTRAINT uq_aeo_alerta UNIQUE (id_alerta),
+  CONSTRAINT chk_aeo_tipo CHECK (tipo_evento IN ('GPS', 'NFC', 'SOS'))
 );
 
 
@@ -492,60 +491,60 @@ CREATE TABLE alerta_evento_origen (
 -- BLOQUE 7: SEDES
 -- =============================================================================
 
-CREATE TABLE sedes (
-    id_sede     INTEGER       PRIMARY KEY,
-    nombre_sede VARCHAR(100)  NOT NULL,
-    calle       VARCHAR(100)  NOT NULL,
-    numero      VARCHAR(10)   NOT NULL,
-    municipio   VARCHAR(80)   NOT NULL,
-    estado      VARCHAR(80)   NOT NULL,
-    CONSTRAINT uq_nombre_sede UNIQUE (nombre_sede)
+CREATE TABLE sedes(
+  id_sede INTEGER PRIMARY KEY,
+  nombre_sede VARCHAR(100) NOT NULL,
+  calle VARCHAR(100) NOT NULL,
+  numero VARCHAR(10) NOT NULL,
+  municipio VARCHAR(80) NOT NULL,
+  estado VARCHAR(80) NOT NULL,
+  CONSTRAINT uq_nombre_sede UNIQUE (nombre_sede)
 );
 
-CREATE TABLE sede_zonas (
-    id_sede  INTEGER  NOT NULL,
-    id_zona  INTEGER  NOT NULL,
-    CONSTRAINT pk_sede_zonas PRIMARY KEY (id_sede, id_zona),
-    CONSTRAINT fk_sz_sede
-        FOREIGN KEY (id_sede) REFERENCES sedes (id_sede),
-    CONSTRAINT fk_sz_zona
-        FOREIGN KEY (id_zona) REFERENCES zonas (id_zona)
+CREATE TABLE sede_zonas(
+  id_sede INTEGER NOT NULL,
+  id_zona INTEGER NOT NULL,
+  CONSTRAINT pk_sede_zonas PRIMARY KEY (id_sede, id_zona),
+  CONSTRAINT fk_sz_sede
+    FOREIGN KEY (id_sede) REFERENCES sedes (id_sede),
+  CONSTRAINT fk_sz_zona
+    FOREIGN KEY (id_zona) REFERENCES zonas (id_zona)
 );
 
-CREATE TABLE sede_empleados (
-    id_sede_empleado INTEGER    PRIMARY KEY,
-    id_sede          INTEGER    NOT NULL,
-    id_empleado      INTEGER    NOT NULL,
-    fecha_ingreso    DATE       NOT NULL,
-    hora_ingreso     TIME       NOT NULL,
-    fecha_salida     DATE,
-    hora_salida      TIME,
-    CONSTRAINT fk_se_sede
-        FOREIGN KEY (id_sede)     REFERENCES sedes     (id_sede)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_se_empleado
-        FOREIGN KEY (id_empleado) REFERENCES empleados (id_empleado)
-        ON DELETE RESTRICT,
-    CONSTRAINT chk_se_fechas
-        CHECK (fecha_salida IS NULL OR fecha_salida >= fecha_ingreso)
+CREATE TABLE sede_empleados(
+  id_sede_empleado INTEGER PRIMARY KEY,
+  id_sede INTEGER NOT NULL,
+  id_empleado INTEGER NOT NULL,
+  fecha_ingreso DATE NOT NULL,
+  hora_ingreso TIME NOT NULL,
+  fecha_salida DATE,
+  hora_salida TIME,
+  CONSTRAINT fk_se_sede
+    FOREIGN KEY (id_sede) REFERENCES sedes (id_sede)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_se_empleado
+    FOREIGN KEY (id_empleado) REFERENCES empleados (id_empleado)
+    ON DELETE RESTRICT,
+  CONSTRAINT chk_se_fechas
+    CHECK (fecha_salida IS NULL OR fecha_salida >= fecha_ingreso)
 );
 
-CREATE TABLE sede_pacientes (
-    id_sede_paciente INTEGER    PRIMARY KEY,
-    id_sede          INTEGER    NOT NULL,
-    id_paciente      INTEGER    NOT NULL,
-    fecha_ingreso    DATE       NOT NULL,
-    hora_ingreso     TIME       NOT NULL,
-    fecha_salida     DATE,
-    hora_salida      TIME,
-    CONSTRAINT fk_sp_sede
-        FOREIGN KEY (id_sede)     REFERENCES sedes     (id_sede)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_sp_paciente
-        FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
-        ON DELETE RESTRICT,
-    CONSTRAINT chk_sp_fechas
-        CHECK (fecha_salida IS NULL OR fecha_salida >= fecha_ingreso)
+CREATE TABLE sede_pacientes(
+  id_sede_paciente INTEGER PRIMARY KEY,
+  id_sede INTEGER NOT NULL,
+  id_paciente INTEGER NOT NULL,
+  fecha_ingreso DATE NOT NULL,
+  hora_ingreso TIME NOT NULL,
+  fecha_salida DATE,
+  hora_salida TIME,
+  CONSTRAINT fk_sp_sede
+    FOREIGN KEY (id_sede) REFERENCES sedes (id_sede)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_sp_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE RESTRICT,
+  CONSTRAINT chk_sp_fechas
+    CHECK (fecha_salida IS NULL OR fecha_salida >= fecha_ingreso)
 );
 
 
@@ -554,59 +553,59 @@ CREATE TABLE sede_pacientes (
 -- estado en entregas_externas ahora referencia catálogo
 -- =============================================================================
 
-CREATE TABLE visitantes (
-    id_visitante   INTEGER      PRIMARY KEY,
-    nombre         VARCHAR(80)  NOT NULL,
-    apellido_p     VARCHAR(80)  NOT NULL,
-    apellido_m     VARCHAR(80),
-    relacion       VARCHAR(50)  NOT NULL,
-    telefono       VARCHAR(20)  NOT NULL,
-    CURP_pasaporte VARCHAR(20)
+CREATE TABLE visitantes(
+  id_visitante INTEGER PRIMARY KEY,
+  nombre VARCHAR(80) NOT NULL,
+  apellido_p VARCHAR(80) NOT NULL,
+  apellido_m VARCHAR(80),
+  relacion VARCHAR(50) NOT NULL,
+  telefono VARCHAR(20) NOT NULL,
+  CURP_pasaporte VARCHAR(20)
 );
 
-CREATE TABLE visitas (
-    id_visita     INTEGER    PRIMARY KEY,
-    id_paciente   INTEGER    NOT NULL,
-    id_visitante  INTEGER    NOT NULL,
-    id_sede       INTEGER    NOT NULL,
-    fecha_entrada DATE       NOT NULL,
-    hora_entrada  TIME       NOT NULL,
-    fecha_salida  DATE,
-    hora_salida   TIME,
-    CONSTRAINT fk_vis_paciente
-        FOREIGN KEY (id_paciente)  REFERENCES pacientes  (id_paciente)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_vis_visitante
-        FOREIGN KEY (id_visitante) REFERENCES visitantes (id_visitante)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_vis_sede
-        FOREIGN KEY (id_sede)      REFERENCES sedes      (id_sede)
-        ON DELETE RESTRICT,
-    CONSTRAINT chk_vis_fechas
-        CHECK (fecha_salida IS NULL OR fecha_salida >= fecha_entrada)
+CREATE TABLE visitas(
+  id_visita INTEGER PRIMARY KEY,
+  id_paciente INTEGER NOT NULL,
+  id_visitante INTEGER NOT NULL,
+  id_sede INTEGER NOT NULL,
+  fecha_entrada DATE NOT NULL,
+  hora_entrada TIME NOT NULL,
+  fecha_salida DATE,
+  hora_salida TIME,
+  CONSTRAINT fk_vis_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_vis_visitante
+    FOREIGN KEY (id_visitante) REFERENCES visitantes (id_visitante)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_vis_sede
+    FOREIGN KEY (id_sede) REFERENCES sedes (id_sede)
+    ON DELETE RESTRICT,
+  CONSTRAINT chk_vis_fechas
+    CHECK (fecha_salida IS NULL OR fecha_salida >= fecha_entrada)
 );
 
-CREATE TABLE entregas_externas (
-    id_entrega      INTEGER       PRIMARY KEY,
-    id_paciente     INTEGER       NOT NULL,
-    id_visitante    INTEGER       NOT NULL,
-    id_cuidador     INTEGER,
-    descripcion     VARCHAR(255)  NOT NULL,
-    estado          VARCHAR(20)   NOT NULL DEFAULT 'Pendiente',
-    fecha_recepcion DATE          NOT NULL,
-    hora_recepcion  TIME          NOT NULL,
-    CONSTRAINT fk_ee_paciente
-        FOREIGN KEY (id_paciente)  REFERENCES pacientes          (id_paciente)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_ee_visitante
-        FOREIGN KEY (id_visitante) REFERENCES visitantes         (id_visitante)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_ee_cuidador
-        FOREIGN KEY (id_cuidador)  REFERENCES cuidadores         (id_empleado)
-        ON DELETE SET NULL,
-    CONSTRAINT fk_ee_estado
-        FOREIGN KEY (estado)       REFERENCES cat_estado_entrega (estado)
-        ON UPDATE CASCADE
+CREATE TABLE entregas_externas(
+  id_entrega INTEGER PRIMARY KEY,
+  id_paciente INTEGER NOT NULL,
+  id_visitante INTEGER NOT NULL,
+  id_cuidador INTEGER,
+  descripcion VARCHAR(255) NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+  fecha_recepcion DATE NOT NULL,
+  hora_recepcion TIME NOT NULL,
+  CONSTRAINT fk_ee_paciente
+    FOREIGN KEY (id_paciente) REFERENCES pacientes (id_paciente)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_ee_visitante
+    FOREIGN KEY (id_visitante) REFERENCES visitantes (id_visitante)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_ee_cuidador
+    FOREIGN KEY (id_cuidador) REFERENCES cuidadores (id_empleado)
+    ON DELETE SET NULL,
+  CONSTRAINT fk_ee_estado
+    FOREIGN KEY (estado) REFERENCES cat_estado_entrega (estado)
+    ON UPDATE CASCADE
 );
 
 
@@ -615,61 +614,61 @@ CREATE TABLE entregas_externas (
 -- estado en suministros ahora referencia catálogo
 -- =============================================================================
 
-CREATE TABLE farmacias_proveedoras (
-    id_farmacia  INTEGER       PRIMARY KEY,
-    nombre       VARCHAR(100)  NOT NULL,
-    telefono     VARCHAR(20),
-    email        VARCHAR(100),
-    calle        VARCHAR(100),
-    numero       VARCHAR(10),
-    colonia      VARCHAR(80),
-    municipio    VARCHAR(80)   NOT NULL,
-    estado       VARCHAR(80)   NOT NULL,
-    RFC          VARCHAR(13)   NOT NULL,
-    CONSTRAINT uq_farmacia_rfc UNIQUE (RFC)
+CREATE TABLE farmacias_proveedoras(
+  id_farmacia INTEGER PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  telefono VARCHAR(20),
+  email VARCHAR(100),
+  calle VARCHAR(100),
+  numero VARCHAR(10),
+  colonia VARCHAR(80),
+  municipio VARCHAR(80) NOT NULL,
+  estado VARCHAR(80) NOT NULL,
+  RFC VARCHAR(13) NOT NULL,
+  CONSTRAINT uq_farmacia_rfc UNIQUE (RFC)
 );
 
-CREATE TABLE inventario_medicinas (
-    GTIN         VARCHAR(20)  NOT NULL,
-    id_sede      INTEGER      NOT NULL,
-    stock_actual INTEGER      NOT NULL DEFAULT 0 CHECK (stock_actual >= 0),
-    stock_minimo INTEGER      NOT NULL DEFAULT 0 CHECK (stock_minimo >= 0),
-    CONSTRAINT pk_inventario PRIMARY KEY (GTIN, id_sede),
-    CONSTRAINT fk_inv_medicamento
-        FOREIGN KEY (GTIN)    REFERENCES medicamentos (GTIN),
-    CONSTRAINT fk_inv_sede
-        FOREIGN KEY (id_sede) REFERENCES sedes        (id_sede)
+CREATE TABLE inventario_medicinas(
+  GTIN VARCHAR(20) NOT NULL,
+  id_sede INTEGER NOT NULL,
+  stock_actual INTEGER NOT NULL DEFAULT 0 CHECK (stock_actual >= 0),
+  stock_minimo INTEGER NOT NULL DEFAULT 0 CHECK (stock_minimo >= 0),
+  CONSTRAINT pk_inventario PRIMARY KEY (GTIN, id_sede),
+  CONSTRAINT fk_inv_medicamento
+    FOREIGN KEY (GTIN) REFERENCES medicamentos (GTIN),
+  CONSTRAINT fk_inv_sede
+    FOREIGN KEY (id_sede) REFERENCES sedes (id_sede)
 );
 
-CREATE TABLE suministros (
-    id_suministro INTEGER      PRIMARY KEY,
-    id_farmacia   INTEGER      NOT NULL,
-    id_sede       INTEGER      NOT NULL,
-    fecha_entrega DATE         NOT NULL,
-    hora_entrega  TIME,
-    estado        VARCHAR(20)  NOT NULL DEFAULT 'Pendiente',
-    CONSTRAINT fk_sum_farmacia
-        FOREIGN KEY (id_farmacia) REFERENCES farmacias_proveedoras  (id_farmacia)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_sum_sede
-        FOREIGN KEY (id_sede)     REFERENCES sedes                  (id_sede)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_sum_estado
-        FOREIGN KEY (estado)      REFERENCES cat_estado_suministro  (estado)
-        ON UPDATE CASCADE
+CREATE TABLE suministros(
+  id_suministro INTEGER PRIMARY KEY,
+  id_farmacia INTEGER NOT NULL,
+  id_sede INTEGER NOT NULL,
+  fecha_entrega DATE NOT NULL,
+  hora_entrega TIME,
+  estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
+  CONSTRAINT fk_sum_farmacia
+    FOREIGN KEY (id_farmacia) REFERENCES farmacias_proveedoras (id_farmacia)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_sum_sede
+    FOREIGN KEY (id_sede) REFERENCES sedes (id_sede)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_sum_estado
+    FOREIGN KEY (estado) REFERENCES cat_estado_suministro (estado)
+    ON UPDATE CASCADE
 );
 
-CREATE TABLE suministro_medicinas (
-    id_suministro INTEGER      NOT NULL,
-    GTIN          VARCHAR(20)  NOT NULL,
-    cantidad      INTEGER      NOT NULL CHECK (cantidad > 0),
-    CONSTRAINT pk_suministro_medicinas PRIMARY KEY (id_suministro, GTIN),
-    CONSTRAINT fk_sm_suministro
-        FOREIGN KEY (id_suministro) REFERENCES suministros  (id_suministro)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_sm_medicamento
-        FOREIGN KEY (GTIN)          REFERENCES medicamentos (GTIN)
-        ON DELETE RESTRICT
+CREATE TABLE suministro_medicinas(
+  id_suministro INTEGER NOT NULL,
+  GTIN VARCHAR(20) NOT NULL,
+  cantidad INTEGER NOT NULL CHECK (cantidad > 0),
+  CONSTRAINT pk_suministro_medicinas PRIMARY KEY (id_suministro, GTIN),
+  CONSTRAINT fk_sm_suministro
+    FOREIGN KEY (id_suministro) REFERENCES suministros (id_suministro)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_sm_medicamento
+    FOREIGN KEY (GTIN) REFERENCES medicamentos (GTIN)
+    ON DELETE RESTRICT
 );
 
 
@@ -678,24 +677,24 @@ CREATE TABLE suministro_medicinas (
 -- turno ahora referencia catálogo
 -- =============================================================================
 
-CREATE TABLE bitacora_comedor (
-    id_bitacora     INTEGER       PRIMARY KEY,
-    id_sede         INTEGER       NOT NULL,
-    id_cocinero     INTEGER       NOT NULL,
-    fecha           DATE          NOT NULL,
-    turno           VARCHAR(20)   NOT NULL,
-    menu_nombre     VARCHAR(100)  NOT NULL,
-    cantidad_platos INTEGER       NOT NULL CHECK (cantidad_platos >= 0),
-    incidencias     VARCHAR(255),
-    CONSTRAINT fk_bc_sede
-        FOREIGN KEY (id_sede)     REFERENCES sedes             (id_sede)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_bc_cocinero
-        FOREIGN KEY (id_cocinero) REFERENCES cocineros          (id_empleado)
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_bc_turno
-        FOREIGN KEY (turno)       REFERENCES cat_turno_comedor  (turno)
-        ON UPDATE CASCADE
+CREATE TABLE bitacora_comedor(
+  id_bitacora INTEGER PRIMARY KEY,
+  id_sede INTEGER NOT NULL,
+  id_cocinero INTEGER NOT NULL,
+  fecha DATE NOT NULL,
+  turno VARCHAR(20) NOT NULL,
+  menu_nombre VARCHAR(100) NOT NULL,
+  cantidad_platos INTEGER NOT NULL CHECK (cantidad_platos >= 0),
+  incidencias VARCHAR(255),
+  CONSTRAINT fk_bc_sede
+    FOREIGN KEY (id_sede) REFERENCES sedes (id_sede)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_bc_cocinero
+    FOREIGN KEY (id_cocinero) REFERENCES cocineros (id_empleado)
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_bc_turno
+    FOREIGN KEY (turno) REFERENCES cat_turno_comedor (turno)
+    ON UPDATE CASCADE
 );
 
 
@@ -703,42 +702,42 @@ CREATE TABLE bitacora_comedor (
 -- ÍNDICES DE RENDIMIENTO
 -- =============================================================================
 
-CREATE INDEX idx_pacientes_estado         ON pacientes             (id_estado);
-CREATE INDEX idx_tiene_enf_paciente       ON tiene_enfermedad      (id_paciente);
-CREATE INDEX idx_tiene_enf_enfermedad     ON tiene_enfermedad      (id_enfermedad);
-CREATE INDEX idx_pac_contactos_paciente   ON paciente_contactos    (id_paciente);
-CREATE INDEX idx_asig_cuid_cuidador       ON asignacion_cuidador   (id_cuidador);
-CREATE INDEX idx_asig_cuid_paciente       ON asignacion_cuidador   (id_paciente);
-CREATE INDEX idx_asig_kit_paciente        ON asignacion_kit        (id_paciente);
-CREATE INDEX idx_lgps_dispositivo_fecha   ON lecturas_gps          (id_dispositivo, fecha_hora DESC);
-CREATE INDEX idx_db_dispositivo_fecha     ON detecciones_beacon    (id_dispositivo, fecha_hora DESC);
-CREATE INDEX idx_db_cuidador_fecha        ON detecciones_beacon    (id_cuidador, fecha_hora DESC);
-CREATE INDEX idx_turno_zona               ON turno_cuidador        (id_zona);
-CREATE INDEX idx_turno_cuidador           ON turno_cuidador        (id_cuidador);
-CREATE INDEX idx_alertas_zona             ON alertas               (id_zona);
-CREATE INDEX idx_lnfc_dispositivo_fecha   ON lecturas_nfc          (id_dispositivo, fecha_hora DESC);
-CREATE INDEX idx_lnfc_receta              ON lecturas_nfc          (id_receta);
-CREATE INDEX idx_alertas_paciente         ON alertas               (id_paciente);
-CREATE INDEX idx_alertas_fecha            ON alertas               (fecha_hora DESC);
-CREATE INDEX idx_alertas_estatus          ON alertas               (estatus);
-CREATE INDEX idx_aeo_alerta               ON alerta_evento_origen  (id_alerta);
-CREATE INDEX idx_recetas_paciente         ON recetas               (id_paciente);
-CREATE INDEX idx_receta_med_receta        ON receta_medicamentos   (id_receta);
-CREATE INDEX idx_receta_nfc_dispositivo   ON receta_nfc            (id_dispositivo);
-CREATE INDEX idx_sede_zonas_zona          ON sede_zonas            (id_zona);
-CREATE INDEX idx_sede_emp_empleado        ON sede_empleados        (id_empleado);
-CREATE INDEX idx_sede_emp_sede            ON sede_empleados        (id_sede);
-CREATE INDEX idx_sede_pac_paciente        ON sede_pacientes        (id_paciente);
-CREATE INDEX idx_sede_pac_sede            ON sede_pacientes        (id_sede);
-CREATE INDEX idx_visitas_paciente         ON visitas               (id_paciente);
-CREATE INDEX idx_visitas_fecha            ON visitas               (fecha_entrada DESC);
-CREATE INDEX idx_visitas_sede             ON visitas               (id_sede);
-CREATE INDEX idx_entregas_paciente        ON entregas_externas     (id_paciente);
-CREATE INDEX idx_inventario_sede          ON inventario_medicinas  (id_sede);
-CREATE INDEX idx_suministros_sede         ON suministros           (id_sede);
-CREATE INDEX idx_bitacora_sede_fecha      ON bitacora_comedor      (id_sede, fecha DESC);
-CREATE INDEX idx_zonas_geom               ON zonas                 USING GIST (geom);
-CREATE INDEX idx_lgps_geom                ON lecturas_gps          USING GIST (geom);
+CREATE INDEX idx_pacientes_estado ON pacientes (id_estado);
+CREATE INDEX idx_tiene_enf_paciente ON tiene_enfermedad (id_paciente);
+CREATE INDEX idx_tiene_enf_enfermedad ON tiene_enfermedad (id_enfermedad);
+CREATE INDEX idx_pac_contactos_paciente ON paciente_contactos (id_paciente);
+CREATE INDEX idx_asig_cuid_cuidador ON asignacion_cuidador (id_cuidador);
+CREATE INDEX idx_asig_cuid_paciente ON asignacion_cuidador (id_paciente);
+CREATE INDEX idx_asig_kit_paciente ON asignacion_kit (id_paciente);
+CREATE INDEX idx_lgps_dispositivo_fecha ON lecturas_gps (id_dispositivo, fecha_hora DESC);
+CREATE INDEX idx_db_dispositivo_fecha ON detecciones_beacon (id_dispositivo, fecha_hora DESC);
+CREATE INDEX idx_db_cuidador_fecha ON detecciones_beacon (id_cuidador, fecha_hora DESC);
+CREATE INDEX idx_turno_zona ON turno_cuidador (id_zona);
+CREATE INDEX idx_turno_cuidador ON turno_cuidador (id_cuidador);
+CREATE INDEX idx_alertas_zona ON alertas (id_zona);
+CREATE INDEX idx_lnfc_dispositivo_fecha ON lecturas_nfc (id_dispositivo, fecha_hora DESC);
+CREATE INDEX idx_lnfc_receta ON lecturas_nfc (id_receta);
+CREATE INDEX idx_alertas_paciente ON alertas (id_paciente);
+CREATE INDEX idx_alertas_fecha ON alertas (fecha_hora DESC);
+CREATE INDEX idx_alertas_estatus ON alertas (estatus);
+CREATE INDEX idx_aeo_alerta ON alerta_evento_origen (id_alerta);
+CREATE INDEX idx_recetas_paciente ON recetas (id_paciente);
+CREATE INDEX idx_receta_med_receta ON receta_medicamentos (id_receta);
+CREATE INDEX idx_receta_nfc_dispositivo ON receta_nfc (id_dispositivo);
+CREATE INDEX idx_sede_zonas_zona ON sede_zonas (id_zona);
+CREATE INDEX idx_sede_emp_empleado ON sede_empleados (id_empleado);
+CREATE INDEX idx_sede_emp_sede ON sede_empleados (id_sede);
+CREATE INDEX idx_sede_pac_paciente ON sede_pacientes (id_paciente);
+CREATE INDEX idx_sede_pac_sede ON sede_pacientes (id_sede);
+CREATE INDEX idx_visitas_paciente ON visitas (id_paciente);
+CREATE INDEX idx_visitas_fecha ON visitas (fecha_entrada DESC);
+CREATE INDEX idx_visitas_sede ON visitas (id_sede);
+CREATE INDEX idx_entregas_paciente ON entregas_externas (id_paciente);
+CREATE INDEX idx_inventario_sede ON inventario_medicinas (id_sede);
+CREATE INDEX idx_suministros_sede ON suministros (id_sede);
+CREATE INDEX idx_bitacora_sede_fecha ON bitacora_comedor (id_sede, fecha DESC);
+CREATE INDEX idx_zonas_geom ON zonas USING GIST (geom);
+CREATE INDEX idx_lgps_geom ON lecturas_gps USING GIST (geom);
 
 
 -- =============================================================================
@@ -749,43 +748,43 @@ CREATE INDEX idx_lgps_geom                ON lecturas_gps          USING GIST (g
 
 -- Un paciente solo puede tener un cuidador activo a la vez
 CREATE UNIQUE INDEX uq_cuidador_activo_por_paciente
-    ON asignacion_cuidador (id_paciente)
-    WHERE fecha_fin IS NULL;
+  ON asignacion_cuidador (id_paciente)
+  WHERE fecha_fin IS NULL;
 
 -- Un paciente solo puede estar en una sede activa a la vez
 CREATE UNIQUE INDEX uq_sede_activa_por_paciente
-    ON sede_pacientes (id_paciente)
-    WHERE fecha_salida IS NULL;
+  ON sede_pacientes (id_paciente)
+  WHERE fecha_salida IS NULL;
 
 -- Un empleado solo puede estar activo en una sede a la vez
 CREATE UNIQUE INDEX uq_sede_activa_por_empleado
-    ON sede_empleados (id_empleado)
-    WHERE fecha_salida IS NULL;
+  ON sede_empleados (id_empleado)
+  WHERE fecha_salida IS NULL;
 
 -- Una receta solo puede tener un dispositivo NFC activo gestionándola
 CREATE UNIQUE INDEX uq_nfc_activo_por_receta
-    ON receta_nfc (id_receta)
-    WHERE fecha_fin_gestion IS NULL;
+  ON receta_nfc (id_receta)
+  WHERE fecha_fin_gestion IS NULL;
 
 -- Un paciente solo puede tener una pulsera NFC activa a la vez
 CREATE UNIQUE INDEX uq_nfc_activo_por_paciente
-    ON asignacion_nfc (id_paciente)
-    WHERE fecha_fin IS NULL;
+  ON asignacion_nfc (id_paciente)
+  WHERE fecha_fin IS NULL;
 
 -- Un dispositivo NFC solo puede estar asignado a un paciente activo a la vez
 CREATE UNIQUE INDEX uq_nfc_dispositivo_activo
-    ON asignacion_nfc (id_dispositivo)
-    WHERE fecha_fin IS NULL;
+  ON asignacion_nfc (id_dispositivo)
+  WHERE fecha_fin IS NULL;
 
 -- Un paciente solo puede tener un kit asignado simultáneamente
 CREATE UNIQUE INDEX uq_kit_activo_por_paciente
-    ON asignacion_kit (id_paciente)
-    WHERE fecha_fin IS NULL;
+  ON asignacion_kit (id_paciente)
+  WHERE fecha_fin IS NULL;
 
 -- Un dispositivo GPS solo puede estar en un kit activo a la vez
 CREATE UNIQUE INDEX uq_gps_activo
-    ON asignacion_kit (id_dispositivo_gps)
-    WHERE fecha_fin IS NULL;
+  ON asignacion_kit (id_dispositivo_gps)
+  WHERE fecha_fin IS NULL;
 
 
 -- =============================================================================
@@ -984,29 +983,29 @@ INSERT INTO asignacion_cuidador
 
 INSERT INTO dispositivos (id_dispositivo, id_serial, modelo, tipo, estado, ultima_conexion) VALUES
     -- GPS
-    (301, 'GPS-SN-001', 'TK103',      'GPS',    'Activo',      '2026-03-30 08:30:00'),
-    (302, 'GPS-SN-002', 'TK103',      'GPS',    'Activo',      '2026-03-30 07:15:00'),
-    (303, 'GPS-SN-003', 'GT06',       'GPS',    'Activo',      '2026-03-30 14:45:00'),
-    (304, 'GPS-SN-004', 'GT06',       'GPS',    'Activo',      '2026-03-29 09:00:00'),
-    (305, 'GPS-SN-005', 'TK103',      'GPS',    'Mantenimiento','2026-03-25 11:00:00'),
+    (301, 'GPS-SN-001', 'TK103', 'GPS', 'Activo',       '2026-03-30 08:30:00'),
+    (302, 'GPS-SN-002', 'TK103', 'GPS', 'Activo',       '2026-03-30 07:15:00'),
+    (303, 'GPS-SN-003', 'GT06',  'GPS', 'Activo',       '2026-03-30 14:45:00'),
+    (304, 'GPS-SN-004', 'GT06',  'GPS', 'Activo',       '2026-03-29 09:00:00'),
+    (305, 'GPS-SN-005', 'TK103', 'GPS', 'Mantenimiento','2026-03-25 11:00:00'),
     -- Beacons
-    (401, 'FDA50693-1000-1001', 'BC001', 'BEACON', 'Activo',     '2026-03-30 09:00:00'),  -- FeasyBeacon FSC-BP104D: UUID-Major-Minor
-    (402, 'BCN-SN-B',   'BC001',      'BEACON', 'Activo',      '2026-03-30 07:15:00'),
-    (403, 'BCN-SN-C',   'BC002',      'BEACON', 'Activo',      '2026-03-30 14:45:00'),
-    (404, 'BCN-SN-D',   'BC002',      'BEACON', 'Activo',      '2026-03-29 09:00:00'),
-    (405, 'BCN-SN-E',   'BC001',      'BEACON', 'Inactivo',    '2026-03-20 08:00:00'),
+    (401, 'FDA50693-1000-1001', 'BC001', 'BEACON', 'Activo',  '2026-03-30 09:00:00'),  -- FeasyBeacon FSC-BP104D: UUID-Major-Minor
+    (402, 'BCN-SN-B',          'BC001', 'BEACON', 'Activo',  '2026-03-30 07:15:00'),
+    (403, 'BCN-SN-C',          'BC002', 'BEACON', 'Activo',  '2026-03-30 14:45:00'),
+    (404, 'BCN-SN-D',          'BC002', 'BEACON', 'Activo',  '2026-03-29 09:00:00'),
+    (405, 'BCN-SN-E',          'BC001', 'BEACON', 'Inactivo','2026-03-20 08:00:00'),
     -- NFC
-    (501, 'NFC-SN-N01', 'NFCReader1', 'NFC',    'Activo',      '2026-03-30 10:00:00'),
-    (502, 'NFC-SN-N02', 'NFCReader1', 'NFC',    'Activo',      '2026-03-30 10:05:00');
+    (501, 'NFC-SN-N01', 'NFCReader1', 'NFC', 'Activo', '2026-03-30 10:00:00'),
+    (502, 'NFC-SN-N02', 'NFCReader1', 'NFC', 'Activo', '2026-03-30 10:05:00');
 
 -- ── Zonas seguras ─────────────────────────────────────────────────────────────
 
 INSERT INTO zonas (id_zona, nombre_zona, latitud_centro, longitud_centro, radio_metros) VALUES
-    (1, 'Jardín Norte',     25.686000, -100.316000, 50),
-    (2, 'Ala Oriente',      25.685000, -100.314000, 40),
-    (3, 'Patio Sur',        25.684000, -100.318000, 60),
-    (4, 'Sala de Terapia',  25.685500, -100.315500, 30),
-    (5, 'Comedor Central',  25.685800, -100.316500, 35);
+    (1, 'Jardín Norte',    25.686000, -100.316000, 50),
+    (2, 'Ala Oriente',     25.685000, -100.314000, 40),
+    (3, 'Patio Sur',       25.684000, -100.318000, 60),
+    (4, 'Sala de Terapia', 25.685500, -100.315500, 30),
+    (5, 'Comedor Central', 25.685800, -100.316500, 35);
 
 UPDATE zonas SET geom = ST_SetSRID(ST_MakePoint(longitud_centro, latitud_centro), 4326)::geography;
 
@@ -1049,15 +1048,15 @@ INSERT INTO asignacion_kit
 
 INSERT INTO lecturas_gps
     (id_lectura, id_dispositivo, fecha_hora, latitud, longitud, altura, nivel_bateria) VALUES
-    (1,  301, '2026-03-30 08:00:00', 25.686050, -100.316020, NULL, 85),
-    (2,  301, '2026-03-30 08:15:00', 25.686400, -100.316500, NULL, 84),  -- dentro
-    (3,  301, '2026-03-30 08:30:00', 25.686900, -100.317200, NULL, 83),  -- salida de zona
-    (4,  302, '2026-03-30 07:10:00', 25.685100, -100.314050, NULL, 60),
-    (5,  302, '2026-03-30 07:30:00', 25.685200, -100.314100, NULL, 59),
-    (6,  303, '2026-03-30 14:00:00', 25.684050, -100.318010, NULL, 72),
-    (7,  304, '2026-03-29 09:00:00', 25.685550, -100.315510, NULL, 90),
+    (1, 301, '2026-03-30 08:00:00', 25.686050, -100.316020, NULL, 85),
+    (2, 301, '2026-03-30 08:15:00', 25.686400, -100.316500, NULL, 84),  -- dentro
+    (3, 301, '2026-03-30 08:30:00', 25.686900, -100.317200, NULL, 83),  -- salida de zona
+    (4, 302, '2026-03-30 07:10:00', 25.685100, -100.314050, NULL, 60),
+    (5, 302, '2026-03-30 07:30:00', 25.685200, -100.314100, NULL, 59),
+    (6, 303, '2026-03-30 14:00:00', 25.684050, -100.318010, NULL, 72),
+    (7, 304, '2026-03-29 09:00:00', 25.685550, -100.315510, NULL, 90),
     -- Escenario 4: GPS-SN-005 reporta batería crítica
-    (8,  305, '2026-03-29 11:00:00', 25.685900, -100.316600, NULL, 8);
+    (8, 305, '2026-03-29 11:00:00', 25.685900, -100.316600, NULL, 8);
 
 UPDATE lecturas_gps SET geom = ST_SetSRID(ST_MakePoint(longitud, latitud), 4326)::geography;
 
@@ -1109,14 +1108,14 @@ INSERT INTO recetas (id_receta, fecha, id_paciente) VALUES
     (905, '2026-03-20', 5);   -- Dolores
 
 INSERT INTO receta_medicamentos (id_detalle, id_receta, GTIN, dosis, frecuencia_horas) VALUES
-    (1, 901, '7501234567890', '10mg', 24),
-    (2, 901, '7508001122334', '5mg',  24),
-    (3, 902, '7501234567890', '10mg', 24),
-    (4, 902, '7509998765432', '20mg', 12),
-    (5, 903, '7503456789012', '250mg', 8),
-    (6, 904, '7501234567890', '10mg', 24),
-    (7, 904, '7506661234567', '850mg', 8),
-    (8, 905, '7509998765432', '20mg', 24);
+    (1, 901, '7501234567890', '10mg',  24),
+    (2, 901, '7508001122334', '5mg',   24),
+    (3, 902, '7501234567890', '10mg',  24),
+    (4, 902, '7509998765432', '20mg',  12),
+    (5, 903, '7503456789012', '250mg',  8),
+    (6, 904, '7501234567890', '10mg',  24),
+    (7, 904, '7506661234567', '850mg',  8),
+    (8, 905, '7509998765432', '20mg',  24);
 
 INSERT INTO receta_nfc (id_receta, id_dispositivo, fecha_inicio_gestion, fecha_fin_gestion) VALUES
     (901, 501, '2026-01-10', NULL),
@@ -1139,9 +1138,9 @@ INSERT INTO lecturas_nfc
 -- ── Sedes ─────────────────────────────────────────────────────────────────────
 
 INSERT INTO sedes (id_sede, nombre_sede, calle, numero, municipio, estado) VALUES
-    (1, 'Sede Norte',  'Av. Insurgentes Norte', '2140', 'Monterrey',  'Nuevo León'),
-    (2, 'Sede Centro', 'Calle Morelos',         '300',  'Monterrey',  'Nuevo León'),
-    (3, 'Sede Sur',    'Blvd. Manuel Ávila',    '500',  'San Pedro',  'Nuevo León');
+    (1, 'Sede Norte',  'Av. Insurgentes Norte', '2140', 'Monterrey', 'Nuevo León'),
+    (2, 'Sede Centro', 'Calle Morelos',         '300',  'Monterrey', 'Nuevo León'),
+    (3, 'Sede Sur',    'Blvd. Manuel Ávila',    '500',  'San Pedro', 'Nuevo León');
 
 INSERT INTO sede_zonas (id_sede, id_zona) VALUES
     (1, 1), (1, 4), (1, 5),
@@ -1171,11 +1170,11 @@ INSERT INTO sede_pacientes
 
 INSERT INTO visitantes
     (id_visitante, nombre, apellido_p, apellido_m, relacion, telefono, CURP_pasaporte) VALUES
-    (1, 'Lucía',   'García',    'Sánchez', 'hija',   '811-234-5678', 'GASL750512MNLRCL09'),
-    (2, 'Roberto', 'Campos',    'Luna',    'hijo',   '811-876-5432', 'CALR801120HNLMNS03'),
-    (3, 'Carmen',  'Vega',      'Torres',  'hija',   '811-333-4444', 'VETC780308MNLGRR02'),
-    (4, 'Miguel',  'Villanueva','Ríos',    'hijo',   '811-987-6543', 'VIRM701201HNLLGS08'),
-    (5, 'Sandra',  'Cruz',      'Paredes', 'hija',   '811-555-6666', 'CUPS650620MNLRND07');
+    (1, 'Lucía',   'García',    'Sánchez', 'hija', '811-234-5678', 'GASL750512MNLRCL09'),
+    (2, 'Roberto', 'Campos',    'Luna',    'hijo', '811-876-5432', 'CALR801120HNLMNS03'),
+    (3, 'Carmen',  'Vega',      'Torres',  'hija', '811-333-4444', 'VETC780308MNLGRR02'),
+    (4, 'Miguel',  'Villanueva','Ríos',    'hijo', '811-987-6543', 'VIRM701201HNLLGS08'),
+    (5, 'Sandra',  'Cruz',      'Paredes', 'hija', '811-555-6666', 'CUPS650620MNLRND07');
 
 INSERT INTO visitas
     (id_visita, id_paciente, id_visitante, id_sede, fecha_entrada, hora_entrada, fecha_salida, hora_salida) VALUES
@@ -1237,8 +1236,8 @@ INSERT INTO suministro_medicinas (id_suministro, GTIN, cantidad) VALUES
 
 INSERT INTO bitacora_comedor
     (id_bitacora, id_sede, id_cocinero, fecha, turno, menu_nombre, cantidad_platos, incidencias) VALUES
-    (1, 1, 5, CURRENT_DATE, 'Desayuno', 'Avena con fruta y jugo de naranja',         3, NULL),
-    (2, 1, 5, CURRENT_DATE, 'Comida',   'Caldo de pollo, arroz integral, gelatina',  3, 'Pac. Roberto rechazó el caldo, se sustituyó por sopa.'),
-    (3, 2, 5, CURRENT_DATE, 'Desayuno', 'Huevos revueltos, frijoles, tortillas',     2, NULL),
-    (4, 3, 6, CURRENT_DATE, 'Desayuno', 'Yogurt con granola y fruta',                2, NULL),
-    (5, 3, 6, CURRENT_DATE, 'Comida',   'Sopa de lentejas, pechuga a la plancha',    2, NULL);
+    (1, 1, 5, CURRENT_DATE, 'Desayuno', 'Avena con fruta y jugo de naranja',        3, NULL),
+    (2, 1, 5, CURRENT_DATE, 'Comida',   'Caldo de pollo, arroz integral, gelatina', 3, 'Pac. Roberto rechazó el caldo, se sustituyó por sopa.'),
+    (3, 2, 5, CURRENT_DATE, 'Desayuno', 'Huevos revueltos, frijoles, tortillas',    2, NULL),
+    (4, 3, 6, CURRENT_DATE, 'Desayuno', 'Yogurt con granola y fruta',               2, NULL),
+    (5, 3, 6, CURRENT_DATE, 'Comida',   'Sopa de lentejas, pechuga a la plancha',   2, NULL);

@@ -27,9 +27,9 @@
 -- Precondiciones: id_paciente debe existir y no estar dado de baja (id_estado != 3)
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_receta_crear(
-    IN p_id_receta   INTEGER,
+    IN p_id_receta INTEGER,
     IN p_id_paciente INTEGER,
-    IN p_fecha       DATE
+    IN p_fecha DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -61,10 +61,10 @@ COMMIT;
 -- Precondiciones: receta y medicamento (gtin) deben existir
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_receta_agregar_medicamento(
-    IN p_id_detalle       INTEGER,
-    IN p_id_receta        INTEGER,
-    IN p_gtin             VARCHAR,
-    IN p_dosis            VARCHAR,
+    IN p_id_detalle INTEGER,
+    IN p_id_receta INTEGER,
+    IN p_gtin VARCHAR,
+    IN p_dosis VARCHAR,
     IN p_frecuencia_horas INTEGER
 )
 LANGUAGE plpgsql AS $$
@@ -99,7 +99,7 @@ COMMIT;
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_receta_quitar_medicamento(
     IN p_id_detalle INTEGER,
-    IN p_id_receta  INTEGER
+    IN p_id_receta INTEGER
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -126,9 +126,9 @@ COMMIT;
 -- Modifica: receta_medicamentos
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_receta_actualizar_medicamento(
-    IN p_id_detalle       INTEGER,
-    IN p_id_receta        INTEGER,
-    IN p_dosis            VARCHAR,
+    IN p_id_detalle INTEGER,
+    IN p_id_receta INTEGER,
+    IN p_dosis VARCHAR,
     IN p_frecuencia_horas INTEGER
 )
 LANGUAGE plpgsql AS $$
@@ -145,7 +145,7 @@ BEGIN
     END IF;
 
     UPDATE receta_medicamentos
-    SET dosis            = p_dosis,
+    SET dosis = p_dosis,
         frecuencia_horas = p_frecuencia_horas
     WHERE id_detalle = p_id_detalle AND id_receta = p_id_receta;
 END;
@@ -167,9 +167,9 @@ COMMIT;
 -- Regla: una receta sólo puede tener un NFC activo a la vez
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_receta_activar_nfc(
-    IN p_id_receta      INTEGER,
+    IN p_id_receta INTEGER,
     IN p_id_dispositivo INTEGER,
-    IN p_fecha_inicio   DATE
+    IN p_fecha_inicio DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -208,15 +208,15 @@ COMMIT;
 -- Útil cuando se cambia de pulsera o el paciente se da de baja.
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_receta_cerrar_nfc(
-    IN p_id_receta      INTEGER,
+    IN p_id_receta INTEGER,
     IN p_id_dispositivo INTEGER,
-    IN p_fecha_fin      DATE
+    IN p_fecha_fin DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM receta_nfc
-        WHERE id_receta      = p_id_receta
+        WHERE id_receta = p_id_receta
           AND id_dispositivo = p_id_dispositivo
           AND fecha_fin_gestion IS NULL
     ) THEN
@@ -225,7 +225,7 @@ BEGIN
 
     UPDATE receta_nfc
     SET fecha_fin_gestion = p_fecha_fin
-    WHERE id_receta      = p_id_receta
+    WHERE id_receta = p_id_receta
       AND id_dispositivo = p_id_dispositivo
       AND fecha_fin_gestion IS NULL;
 END;
@@ -243,9 +243,9 @@ COMMIT;
 -- Modifica: receta_nfc (UPDATE + INSERT)
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_receta_cambiar_nfc(
-    IN p_id_receta            INTEGER,
+    IN p_id_receta INTEGER,
     IN p_id_dispositivo_nuevo INTEGER,
-    IN p_fecha_cambio         DATE
+    IN p_fecha_cambio DATE
 )
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -268,7 +268,7 @@ BEGIN
 
     UPDATE receta_nfc
     SET fecha_fin_gestion = p_fecha_cambio
-    WHERE id_receta      = p_id_receta
+    WHERE id_receta = p_id_receta
       AND id_dispositivo = v_dispositivo_actual
       AND fecha_fin_gestion IS NULL;
 
@@ -296,16 +296,16 @@ COMMIT;
 CREATE PROCEDURE sp_nfc_registrar_lectura(
     IN p_id_lectura_nfc INTEGER,
     IN p_id_dispositivo INTEGER,
-    IN p_id_receta      INTEGER,
-    IN p_fecha_hora     TIMESTAMP,
-    IN p_tipo_lectura   VARCHAR,
-    IN p_resultado      VARCHAR
+    IN p_id_receta INTEGER,
+    IN p_fecha_hora TIMESTAMP,
+    IN p_tipo_lectura VARCHAR,
+    IN p_resultado VARCHAR
 )
 LANGUAGE plpgsql AS $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM receta_nfc
-        WHERE id_receta      = p_id_receta
+        WHERE id_receta = p_id_receta
           AND id_dispositivo = p_id_dispositivo
           AND fecha_fin_gestion IS NULL
     ) THEN
@@ -374,7 +374,7 @@ COMMIT;
 -- luego abre una nueva en asignacion_nfc.
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_nfc_asignar(
-    IN p_id_paciente    INTEGER,
+    IN p_id_paciente INTEGER,
     IN p_id_dispositivo INTEGER
 )
 LANGUAGE plpgsql AS $$
@@ -428,8 +428,8 @@ COMMIT;
 -- Retorna: id_detalle, gtin, nombre_medicamento, dosis, frecuencia_horas
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_receta_consultar_medicamentos(
-    IN    p_id_receta    INTEGER,
-    INOUT io_resultados  REFCURSOR
+    IN p_id_receta INTEGER,
+    INOUT io_resultados REFCURSOR
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -438,14 +438,14 @@ BEGIN
     END IF;
 
     OPEN io_resultados FOR
-        SELECT  rm.id_detalle,
-                rm.gtin,
-                m.nombre_medicamento,
-                rm.dosis,
-                rm.frecuencia_horas
-        FROM    receta_medicamentos rm
-        JOIN    medicamentos        m  ON m.gtin = rm.gtin
-        WHERE   rm.id_receta = p_id_receta
+        SELECT rm.id_detalle,
+               rm.gtin,
+               m.nombre_medicamento,
+               rm.dosis,
+               rm.frecuencia_horas
+        FROM receta_medicamentos rm
+        JOIN medicamentos m ON m.gtin = rm.gtin
+        WHERE rm.id_receta = p_id_receta
         ORDER BY rm.id_detalle;
 END;
 $$;
@@ -463,9 +463,9 @@ COMMIT;
 -- Retorna: id_lectura_nfc, numero_serie, fecha_hora, tipo_lectura, resultado
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_nfc_historial_lecturas(
-    IN    p_id_receta    INTEGER,
-    IN    p_limite       INTEGER,
-    INOUT io_resultados  REFCURSOR
+    IN p_id_receta INTEGER,
+    IN p_limite INTEGER,
+    INOUT io_resultados REFCURSOR
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -478,14 +478,14 @@ BEGIN
     END IF;
 
     OPEN io_resultados FOR
-        SELECT  ln.id_lectura_nfc,
-                d.numero_serie,
-                ln.fecha_hora,
-                ln.tipo_lectura,
-                ln.resultado
-        FROM    lecturas_nfc  ln
-        JOIN    dispositivos  d  ON d.id_dispositivo = ln.id_dispositivo
-        WHERE   ln.id_receta = p_id_receta
+        SELECT ln.id_lectura_nfc,
+               d.numero_serie,
+               ln.fecha_hora,
+               ln.tipo_lectura,
+               ln.resultado
+        FROM lecturas_nfc ln
+        JOIN dispositivos d ON d.id_dispositivo = ln.id_dispositivo
+        WHERE ln.id_receta = p_id_receta
         ORDER BY ln.fecha_hora DESC
         LIMIT p_limite;
 END;
@@ -504,8 +504,8 @@ COMMIT;
 -- Retorna: id_receta, fecha, total_medicamentos, numero_serie_nfc
 -- -----------------------------------------------------------------------------
 CREATE PROCEDURE sp_paciente_recetas_activas(
-    IN    p_id_paciente  INTEGER,
-    INOUT io_resultados  REFCURSOR
+    IN p_id_paciente INTEGER,
+    INOUT io_resultados REFCURSOR
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -517,17 +517,17 @@ BEGIN
     END IF;
 
     OPEN io_resultados FOR
-        SELECT  r.id_receta,
-                r.fecha,
-                COUNT(rm.id_detalle)    AS total_medicamentos,
-                d.numero_serie          AS numero_serie_nfc
-        FROM    recetas              r
+        SELECT r.id_receta,
+               r.fecha,
+               COUNT(rm.id_detalle) AS total_medicamentos,
+               d.numero_serie AS numero_serie_nfc
+        FROM recetas r
         LEFT JOIN receta_medicamentos rm ON rm.id_receta = r.id_receta
-        LEFT JOIN receta_nfc          rn ON rn.id_receta = r.id_receta
-                                        AND rn.fecha_fin_gestion IS NULL
-        LEFT JOIN dispositivos        d  ON d.id_dispositivo = rn.id_dispositivo
-        WHERE   r.id_paciente = p_id_paciente
-          AND   r.estado      = 'Activa'
+        LEFT JOIN receta_nfc rn ON rn.id_receta = r.id_receta
+                               AND rn.fecha_fin_gestion IS NULL
+        LEFT JOIN dispositivos d ON d.id_dispositivo = rn.id_dispositivo
+        WHERE r.id_paciente = p_id_paciente
+          AND r.estado = 'Activa'
         GROUP BY r.id_receta, r.fecha, d.numero_serie
         ORDER BY r.fecha DESC;
 END;

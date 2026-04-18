@@ -286,20 +286,8 @@ def pacientes_nuevo():
             id_estado  = int(request.form["id_estado"])
             id_sede    = int(request.form["id_sede"])
 
-            next_sp = db.scalar(
-                "SELECT COALESCE(MAX(id_sede_paciente), 0) + 1 FROM sede_pacientes"
-            )
-
-            db.execute_many([
-                ("""INSERT INTO pacientes
-                        (id_paciente, nombre, apellido_p, apellido_m, fecha_nacimiento, id_estado)
-                    VALUES (%s, %s, %s, %s, %s, %s)""",
-                 (id_pac, nombre, apellido_p, apellido_m, fecha_nac, id_estado)),
-                ("""INSERT INTO sede_pacientes
-                        (id_sede_paciente, id_sede, id_paciente, fecha_ingreso, hora_ingreso)
-                    VALUES (%s, %s, %s, CURRENT_DATE, CURRENT_TIME)""",
-                 (next_sp, id_sede, id_pac)),
-            ])
+            db.execute("CALL sp_ins_paciente(%s, %s, %s, %s, %s, %s, %s)",
+                       (id_pac, nombre, apellido_p, apellido_m, fecha_nac, id_estado, id_sede))
 
             flash("Paciente registrado correctamente.", "success")
             return redirect(url_for("pacientes_lista"))
@@ -338,12 +326,8 @@ def pacientes_editar(id):
             fecha_nac  = request.form["fecha_nacimiento"]
             id_estado  = int(request.form["id_estado"])
 
-            db.execute("""
-                UPDATE pacientes
-                SET nombre = %s, apellido_p = %s, apellido_m = %s,
-                    fecha_nacimiento = %s, id_estado = %s
-                WHERE id_paciente = %s
-            """, (nombre, apellido_p, apellido_m, fecha_nac, id_estado, id))
+            db.execute("CALL sp_upd_paciente(%s, %s, %s, %s, %s, %s)",
+                       (id, nombre, apellido_p, apellido_m, fecha_nac, id_estado))
 
             flash("Paciente actualizado correctamente.", "success")
             return redirect(url_for("pacientes_lista"))
@@ -357,7 +341,7 @@ def pacientes_editar(id):
 @admin_requerido
 def pacientes_eliminar(id):
     try:
-        db.execute("UPDATE pacientes SET id_estado = 3 WHERE id_paciente = %s", (id,))
+        db.execute("CALL sp_del_paciente(%s)", (id,))
         flash("Paciente dado de baja correctamente.", "success")
     except Exception as e:
         flash(f"Error al dar de baja: {e}", "error")
@@ -627,10 +611,7 @@ def pacientes_agregar_enfermedad(id):
     try:
         id_enfermedad = int(request.form["id_enfermedad"])
         fecha_diag    = request.form["fecha_diag"]
-        db.execute("""
-            INSERT INTO tiene_enfermedad (id_paciente, id_enfermedad, fecha_diag)
-            VALUES (%s, %s, %s)
-        """, (id, id_enfermedad, fecha_diag))
+        db.execute("CALL sp_ins_enfermedad(%s, %s, %s)", (id, id_enfermedad, fecha_diag))
         flash("Enfermedad agregada correctamente.", "success")
     except Exception as e:
         flash(f"Error al agregar enfermedad: {e}", "error")
@@ -642,10 +623,7 @@ def pacientes_agregar_enfermedad(id):
 def pacientes_quitar_enfermedad(id):
     try:
         id_enfermedad = int(request.form["id_enfermedad"])
-        db.execute("""
-            DELETE FROM tiene_enfermedad
-            WHERE id_paciente = %s AND id_enfermedad = %s
-        """, (id, id_enfermedad))
+        db.execute("CALL sp_del_enfermedad(%s, %s)", (id, id_enfermedad))
         flash("Diagnóstico eliminado correctamente.", "success")
     except Exception as e:
         flash(f"Error al eliminar diagnóstico: {e}", "error")
@@ -664,23 +642,8 @@ def pacientes_agregar_contacto(id):
         email      = request.form.get("email", "").strip() or None
         pin_acceso = request.form.get("pin_acceso", "").strip() or None
 
-        next_id   = db.scalar(
-            "SELECT COALESCE(MAX(id_contacto), 0) + 1 FROM contactos_emergencia"
-        )
-        next_prio = db.scalar(
-            "SELECT COALESCE(MAX(prioridad), 0) + 1 FROM paciente_contactos WHERE id_paciente = %s",
-            (id,)
-        )
-
-        db.execute_many([
-            ("""INSERT INTO contactos_emergencia
-                    (id_contacto, nombre, apellido_p, apellido_m, telefono, relacion, email, pin_acceso)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-             (next_id, nombre, apellido_p, apellido_m, telefono, relacion, email, pin_acceso)),
-            ("""INSERT INTO paciente_contactos (id_paciente, id_contacto, prioridad)
-                VALUES (%s, %s, %s)""",
-             (id, next_id, next_prio)),
-        ])
+        db.execute("CALL sp_ins_contacto(%s, %s, %s, %s, %s, %s, %s, %s)",
+                   (id, nombre, apellido_p, apellido_m, telefono, relacion, email, pin_acceso))
 
         flash("Contacto de emergencia agregado correctamente.", "success")
     except Exception as e:
@@ -692,15 +655,8 @@ def pacientes_agregar_contacto(id):
 @admin_requerido
 def pacientes_asignar_kit(id):
     try:
-        id_gps  = int(request.form["id_dispositivo_gps"])
-        next_id = db.scalar(
-            "SELECT COALESCE(MAX(id_monitoreo), 0) + 1 FROM asignacion_kit"
-        )
-        db.execute("""
-            INSERT INTO asignacion_kit
-                (id_monitoreo, id_paciente, id_dispositivo_gps, fecha_entrega)
-            VALUES (%s, %s, %s, CURRENT_DATE)
-        """, (next_id, id, id_gps))
+        id_gps = int(request.form["id_dispositivo_gps"])
+        db.execute("CALL sp_ins_kit(%s, %s)", (id, id_gps))
         flash("Kit GPS asignado correctamente.", "success")
     except Exception as e:
         flash(f"Error al asignar kit GPS: {e}", "error")
@@ -859,14 +815,10 @@ def turnos_nuevo():
                     for d in ("lunes","martes","miercoles","jueves",
                               "viernes","sabado","domingo")}
 
-            db.execute("""
-                INSERT INTO turno_cuidador
-                    (id_turno, id_cuidador, id_zona, hora_inicio, hora_fin,
-                     lunes, martes, miercoles, jueves, viernes, sabado, domingo, activo)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE)
-            """, (id_turno, id_cuidador, id_zona, hora_inicio, hora_fin,
-                  dias["lunes"], dias["martes"], dias["miercoles"], dias["jueves"],
-                  dias["viernes"], dias["sabado"], dias["domingo"]))
+            db.execute("CALL sp_ins_turno(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                       (id_turno, id_cuidador, id_zona, hora_inicio, hora_fin,
+                        dias["lunes"], dias["martes"], dias["miercoles"], dias["jueves"],
+                        dias["viernes"], dias["sabado"], dias["domingo"]))
 
             flash("Turno registrado correctamente.", "success")
             return redirect(url_for("turnos_lista"))
@@ -911,15 +863,10 @@ def turnos_editar(id):
                     for d in ("lunes","martes","miercoles","jueves",
                               "viernes","sabado","domingo")}
 
-            db.execute("""
-                UPDATE turno_cuidador
-                SET id_cuidador = %s, id_zona = %s, hora_inicio = %s, hora_fin = %s,
-                    lunes = %s, martes = %s, miercoles = %s, jueves = %s,
-                    viernes = %s, sabado = %s, domingo = %s, activo = %s
-                WHERE id_turno = %s
-            """, (id_cuidador, id_zona, hora_inicio, hora_fin,
-                  dias["lunes"], dias["martes"], dias["miercoles"], dias["jueves"],
-                  dias["viernes"], dias["sabado"], dias["domingo"], activo, id))
+            db.execute("CALL sp_upd_turno(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                       (id, id_cuidador, id_zona, hora_inicio, hora_fin,
+                        dias["lunes"], dias["martes"], dias["miercoles"], dias["jueves"],
+                        dias["viernes"], dias["sabado"], dias["domingo"], activo))
 
             flash("Turno actualizado correctamente.", "success")
             return redirect(url_for("turnos_lista"))
@@ -941,7 +888,7 @@ def turnos_editar(id):
 @admin_requerido
 def turnos_eliminar(id):
     try:
-        db.execute("DELETE FROM turno_cuidador WHERE id_turno = %s", (id,))
+        db.execute("CALL sp_del_turno(%s)", (id,))
         flash("Turno eliminado correctamente.", "success")
     except Exception as e:
         flash(f"Error al eliminar turno: {e}", "error")

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlzMonitor — Test NFC</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: #f1f5f9; padding: 20px; max-width: 480px; margin: 0 auto; }
+        h1 { font-size: 20px; color: #082F3E; margin-bottom: 16px; }
+        .status { padding: 16px; border-radius: 8px; margin-bottom: 16px; font-size: 16px; text-align: center; }
+        .status.waiting  { background: #e2e8f0; color: #475569; }
+        .status.scanning { background: #dbeafe; color: #1d4ed8; }
+        .status.success  { background: #d1fae5; color: #065f46; }
+        .status.error    { background: #fee2e2; color: #991b1b; }
+        button { width: 100%; padding: 16px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; margin-bottom: 16px; }
+        .btn-scan          { background: #0E7490; color: white; }
+        .btn-scan:disabled { background: #94a3b8; cursor: default; }
+        .log { background: white; border-radius: 8px; padding: 16px; }
+        .log h2 { font-size: 16px; color: #082F3E; margin-bottom: 12px; }
+        .log-entry { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+        .log-entry:last-child { border-bottom: none; }
+        .log-entry .time   { color: #64748b; font-size: 12px; }
+        .log-entry .serial { font-family: monospace; color: #0E7490; font-weight: bold; }
+        .log-entry .result { margin-top: 4px; }
+        .log-entry .result.ok        { color: #065f46; }
+        .log-entry .result.not-found { color: #b45309; }
+        .log-entry .result.err       { color: #991b1b; }
+        .empty { color: #94a3b8; text-align: center; padding: 20px; }
+        .hint  { font-size: 13px; color: #64748b; margin-bottom: 16px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test NFC — AlzMonitor</h1>
+    <p class="hint">Solo funciona en Chrome Android con HTTPS. Si ves "no soportado", abre esta página en Chrome desde tu Android.</p>
+
+    <div id="status" class="status waiting">
+        Presiona el botón para iniciar el escaneo NFC
+    </div>
+
+    <button id="scanBtn" class="btn-scan" onclick="startScan()">
+        Iniciar Escaneo NFC
+    </button>
+
+    <div class="log">
+        <h2>📋 Lecturas registradas</h2>
+        <div id="logArea">
+            <div class="empty">Aún no hay lecturas</div>
+        </div>
+    </div>
+
+    <script>
+        let scanning = false;
+
+        async function startScan() {
+            if (!('NDEFReader' in window)) {
+                setStatus('error', '❌ Web NFC no soportado en este navegador. Usa Chrome en Android.');
+                return;
+            }
+
+            const btn = document.getElementById('scanBtn');
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                scanning = true;
+                btn.disabled = true;
+                btn.textContent = 'Escaneando...';
+                setStatus('scanning', '📡 Escaneando... Acerca un tag NFC al teléfono');
+
+                ndef.onreading = async (event) => {
+                    const serial = event.serialNumber || 'unknown';
+                    setStatus('success', '✅ Tag detectado: ' + serial);
+
+                    try {
+                        const res = await fetch('/api/test/nfc', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tag_serial: serial, timestamp: new Date().toISOString() })
+                        });
+                        const data = await res.json();
+                        addLogEntry(serial, data);
+                    } catch (err) {
+                        addLogEntry(serial, { status: 'error', message: 'Error de conexión: ' + err.message });
+                    }
+
+                    setTimeout(() => {
+                        if (scanning) setStatus('scanning', '📡 Escaneando... Acerca otro tag NFC');
+                    }, 3000);
+                };
+
+                ndef.onreadingerror = () => {
+                    setStatus('error', '❌ Error al leer tag. Intenta de nuevo.');
+                };
+
+            } catch (err) {
+                setStatus('error', '❌ ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Iniciar Escaneo NFC';
+            }
+        }
+
+        function setStatus(type, message) {
+            const el = document.getElementById('status');
+            el.className = 'status ' + type;
+            el.textContent = message;
+        }
+
+        function addLogEntry(serial, data) {
+            const logArea = document.getElementById('logArea');
+            const empty = logArea.querySelector('.empty');
+            if (empty) empty.remove();
+
+            let resultClass, resultText;
+            if (data.status === 'found') {
+                resultClass = 'ok';
+                resultText = '✅ ' + data.patient_name
+                    + (data.receta_id ? ' | Receta #' + data.receta_id : '')
+                    + ' | Disp: ' + data.device_serial;
+            } else if (data.status === 'not_found') {
+                resultClass = 'not-found';
+                resultText = '⚠️ Tag no registrado — registra el serial en Dispositivos (tipo NFC) para vincularlo';
+            } else {
+                resultClass = 'err';
+                resultText = '❌ ' + (data.message || 'Error desconocido');
+            }
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <div class="time">${new Date().toLocaleTimeString('es-MX')}</div>
+                <div>Serial: <span class="serial">${serial}</span></div>
+                <div class="result ${resultClass}">${resultText}</div>
+            `;
+            logArea.prepend(entry);
+        }
+    </script>
+</body>
+</html>

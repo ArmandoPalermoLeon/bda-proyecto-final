@@ -6,6 +6,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **AlzMonitor** is an academic Flask web app for managing Alzheimer's patients across multiple clinical facilities. Built for an Advanced Databases (BDA) university course to demonstrate multi-tenant clinical data modeling, stored procedures, DB triggers, and IoT integration.
 
+## REGLA CRÍTICA — Sin SQL embebido
+
+**No se permite SQL embebido en ningún archivo Python.** Toda interacción con la base de datos debe hacerse a través de stored procedures.
+
+- `db.query(...)`, `db.one(...)`, `db.scalar(...)` con SQL literal → **PROHIBIDO**
+- `db.execute("INSERT/UPDATE/DELETE ...")` con SQL literal → **PROHIBIDO**
+- Lo permitido: `db.execute("CALL sp_nombre(...)", params)` y los helpers de REFCURSOR
+- Los SPs de SELECT usan el patrón `INOUT io_resultados REFCURSOR`
+- Los SPs de DML no retornan cursor
+
+Convención de nombres de SPs:
+- `sp_sel_*` — consultas SELECT (con REFCURSOR)
+- `sp_ins_*` — INSERT
+- `sp_upd_*` — UPDATE
+- `sp_del_*` — DELETE
+- `sp_<modulo>_<accion>` — lógica de negocio compleja (ej. `sp_receta_cerrar`)
+
+Archivos SQL con SPs aplicados a la DB:
+- `RecetasProcedures.sql` — módulo recetas/NFC (10 SPs)
+- `BeaconProcedures.sql` — módulo rondas beacon (1 SP)
+- `AppProcedures.sql` — **pendiente de crear** — todos los demás SPs de app.py y pdf_report.py
+
 ## Running the App
 
 ```bash

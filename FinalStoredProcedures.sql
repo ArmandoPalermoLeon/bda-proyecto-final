@@ -19,16 +19,16 @@
 -- Registra un nuevo paciente y lo admite en una sede al mismo tiempo.
 -- Inserta en: pacientes, sede_pacientes
 CREATE OR REPLACE PROCEDURE sp_paciente_registrar(
-    p_id_paciente      INTEGER,
-    p_nombre           VARCHAR,
-    p_apellido_p       VARCHAR,
-    p_apellido_m       VARCHAR,
+    p_id_paciente INTEGER,
+    p_nombre VARCHAR,
+    p_apellido_p VARCHAR,
+    p_apellido_m VARCHAR,
     p_fecha_nacimiento DATE,
-    p_id_estado        INTEGER,    -- 1=Activo por defecto
-    p_id_sede          INTEGER,    -- sede donde ingresa
-    p_fecha_ingreso    DATE,
-    p_hora_ingreso     TIME,
-    p_id_sede_paciente INTEGER     -- PK de sede_pacientes (manual)
+    p_id_estado INTEGER, -- 1=Activo por defecto
+    p_id_sede INTEGER, -- sede donde ingresa
+    p_fecha_ingreso DATE,
+    p_hora_ingreso TIME,
+    p_id_sede_paciente INTEGER -- PK de sede_pacientes (manual)
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -44,12 +44,12 @@ $$;
 -- Actualiza los datos personales de un paciente existente.
 -- Modifica: pacientes
 CREATE OR REPLACE PROCEDURE sp_paciente_editar(
-    p_id_paciente      INTEGER,
-    p_nombre           VARCHAR,
-    p_apellido_p       VARCHAR,
-    p_apellido_m       VARCHAR,
+    p_id_paciente INTEGER,
+    p_nombre VARCHAR,
+    p_apellido_p VARCHAR,
+    p_apellido_m VARCHAR,
     p_fecha_nacimiento DATE,
-    p_id_estado        INTEGER
+    p_id_estado INTEGER
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -63,9 +63,9 @@ $$;
 -- Baja lógica de un paciente (no elimina el registro).
 -- Modifica: pacientes (id_estado = 3), sede_pacientes (fecha_salida)
 CREATE OR REPLACE PROCEDURE sp_paciente_dar_baja(
-    p_id_paciente  INTEGER,
+    p_id_paciente INTEGER,
     p_fecha_salida DATE,
-    p_hora_salida  TIME
+    p_hora_salida TIME
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -82,13 +82,13 @@ $$;
 -- Asigna o transfiere un paciente a otra sede.
 -- Cierra el registro activo en sede_pacientes y abre uno nuevo.
 CREATE OR REPLACE PROCEDURE sp_paciente_transferir_sede(
-    p_id_paciente        INTEGER,
-    p_id_sede_nueva      INTEGER,
-    p_fecha_salida       DATE,
-    p_hora_salida        TIME,
-    p_fecha_ingreso      DATE,
-    p_hora_ingreso       TIME,
-    p_id_sede_paciente   INTEGER    -- nueva PK para sede_pacientes
+    p_id_paciente INTEGER,
+    p_id_sede_nueva INTEGER,
+    p_fecha_salida DATE,
+    p_hora_salida TIME,
+    p_fecha_ingreso DATE,
+    p_hora_ingreso TIME,
+    p_id_sede_paciente INTEGER -- nueva PK para sede_pacientes
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -103,9 +103,9 @@ $$;
 -- Vincula una enfermedad diagnosticada a un paciente.
 -- Inserta en: tiene_enfermedad
 CREATE OR REPLACE PROCEDURE sp_paciente_agregar_enfermedad(
-    p_id_paciente   INTEGER,
+    p_id_paciente INTEGER,
     p_id_enfermedad INTEGER,
-    p_fecha_diag    DATE
+    p_fecha_diag DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -121,16 +121,16 @@ $$;
 -- Registra un contacto de emergencia nuevo y lo vincula al paciente.
 -- Inserta en: contactos_emergencia, paciente_contactos
 CREATE OR REPLACE PROCEDURE sp_paciente_agregar_contacto(
-    p_id_contacto   INTEGER,
-    p_nombre        VARCHAR,
-    p_apellido_p    VARCHAR,
-    p_apellido_m    VARCHAR,
-    p_telefono      VARCHAR,
-    p_relacion      VARCHAR,
-    p_fecha_nac     DATE,
-    p_curp          VARCHAR,
-    p_id_paciente   INTEGER,
-    p_prioridad     INTEGER    -- debe ser único por paciente
+    p_id_contacto INTEGER,
+    p_nombre VARCHAR,
+    p_apellido_p VARCHAR,
+    p_apellido_m VARCHAR,
+    p_telefono VARCHAR,
+    p_relacion VARCHAR,
+    p_fecha_nac DATE,
+    p_curp VARCHAR,
+    p_id_paciente INTEGER,
+    p_prioridad INTEGER -- debe ser único por paciente
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -149,15 +149,15 @@ $$;
 -- Registra un nuevo cuidador (empleado + cuidador en una transacción).
 -- Inserta en: empleados, cuidadores
 CREATE OR REPLACE PROCEDURE sp_cuidador_registrar(
-    p_id_empleado         INTEGER,
-    p_nombre              VARCHAR,
-    p_apellido_p          VARCHAR,
-    p_apellido_m          VARCHAR,
-    p_curp                VARCHAR,
-    p_telefono            VARCHAR,
-    p_fecha_nac           DATE,
-    p_certificacion       VARCHAR,   -- puede ser NULL
-    p_especialidad        VARCHAR    -- puede ser NULL
+    p_id_empleado INTEGER,
+    p_nombre VARCHAR,
+    p_apellido_p VARCHAR,
+    p_apellido_m VARCHAR,
+    p_curp VARCHAR,
+    p_telefono VARCHAR,
+    p_fecha_nac DATE,
+    p_certificacion VARCHAR, -- puede ser NULL
+    p_especialidad VARCHAR -- puede ser NULL
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -173,14 +173,14 @@ $$;
 -- Actualiza los datos personales y profesionales de un cuidador.
 -- Modifica: empleados, cuidadores
 CREATE OR REPLACE PROCEDURE sp_cuidador_editar(
-    p_id_empleado   INTEGER,
-    p_nombre        VARCHAR,
-    p_apellido_p    VARCHAR,
-    p_apellido_m    VARCHAR,
-    p_curp          VARCHAR,
-    p_telefono      VARCHAR,
+    p_id_empleado INTEGER,
+    p_nombre VARCHAR,
+    p_apellido_p VARCHAR,
+    p_apellido_m VARCHAR,
+    p_curp VARCHAR,
+    p_telefono VARCHAR,
     p_certificacion VARCHAR,
-    p_especialidad  VARCHAR
+    p_especialidad VARCHAR
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -215,9 +215,9 @@ $$;
 -- Inserta en: asignacion_cuidador
 CREATE OR REPLACE PROCEDURE sp_cuidador_asignar_paciente(
     p_id_asig_cuidador INTEGER,
-    p_id_cuidador      INTEGER,
-    p_id_paciente      INTEGER,
-    p_fecha_inicio     DATE
+    p_id_cuidador INTEGER,
+    p_id_paciente INTEGER,
+    p_fecha_inicio DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -235,10 +235,10 @@ $$;
 -- Inserta en: sede_empleados
 CREATE OR REPLACE PROCEDURE sp_cuidador_asignar_sede(
     p_id_sede_empleado INTEGER,
-    p_id_sede          INTEGER,
-    p_id_empleado      INTEGER,
-    p_fecha_ingreso    DATE,
-    p_hora_ingreso     TIME
+    p_id_sede INTEGER,
+    p_id_empleado INTEGER,
+    p_fecha_ingreso DATE,
+    p_hora_ingreso TIME
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -259,10 +259,10 @@ $$;
 -- Registra una nueva alerta clínica.
 -- Inserta en: alertas
 CREATE OR REPLACE PROCEDURE sp_alerta_registrar(
-    p_id_alerta   INTEGER,
+    p_id_alerta INTEGER,
     p_id_paciente INTEGER,
-    p_tipo_alerta VARCHAR,    -- debe existir en cat_tipo_alerta
-    p_fecha_hora  TIMESTAMP
+    p_tipo_alerta VARCHAR, -- debe existir en cat_tipo_alerta
+    p_fecha_hora TIMESTAMP
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -307,11 +307,11 @@ $$;
 -- Vincula una alerta existente con el evento IoT que la disparó.
 -- Inserta en: alerta_evento_origen
 CREATE OR REPLACE PROCEDURE sp_alerta_vincular_origen(
-    p_id_origen       INTEGER,
-    p_id_alerta       INTEGER,
-    p_tipo_evento     VARCHAR,    -- 'GPS', 'BEACON', 'NFC', 'SOS'
-    p_id_lectura_gps  INTEGER,    -- NULL si no aplica
-    p_id_deteccion    INTEGER,    -- NULL si no aplica
+    p_id_origen INTEGER,
+    p_id_alerta INTEGER,
+    p_tipo_evento VARCHAR, -- 'GPS', 'BEACON', 'NFC', 'SOS'
+    p_id_lectura_gps INTEGER, -- NULL si no aplica
+    p_id_deteccion INTEGER, -- NULL si no aplica
     p_regla_disparada VARCHAR
 )
 LANGUAGE plpgsql AS $$
@@ -334,9 +334,9 @@ $$;
 -- Inserta en: dispositivos
 CREATE OR REPLACE PROCEDURE sp_dispositivo_registrar(
     p_id_dispositivo INTEGER,
-    p_id_serial      VARCHAR,
-    p_tipo           VARCHAR,    -- 'GPS', 'BEACON' o 'NFC'
-    p_modelo         VARCHAR
+    p_id_serial VARCHAR,
+    p_tipo VARCHAR, -- 'GPS', 'BEACON' o 'NFC'
+    p_modelo VARCHAR
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -353,10 +353,10 @@ $$;
 -- Modifica: dispositivos
 CREATE OR REPLACE PROCEDURE sp_dispositivo_editar(
     p_id_dispositivo INTEGER,
-    p_id_serial      VARCHAR,
-    p_tipo           VARCHAR,
-    p_modelo         VARCHAR,
-    p_estado         VARCHAR    -- 'Activo', 'Inactivo', 'Mantenimiento'
+    p_id_serial VARCHAR,
+    p_tipo VARCHAR,
+    p_modelo VARCHAR,
+    p_estado VARCHAR -- 'Activo', 'Inactivo', 'Mantenimiento'
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -389,11 +389,11 @@ $$;
 -- Verifica que ambos dispositivos sean del tipo correcto y estén disponibles.
 -- Inserta en: asignacion_kit
 CREATE OR REPLACE PROCEDURE sp_dispositivo_asignar_kit(
-    p_id_monitoreo          INTEGER,
-    p_id_paciente           INTEGER,
-    p_id_dispositivo_gps    INTEGER,
+    p_id_monitoreo INTEGER,
+    p_id_paciente INTEGER,
+    p_id_dispositivo_gps INTEGER,
     p_id_dispositivo_beacon INTEGER,
-    p_fecha_entrega         DATE
+    p_fecha_entrega DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -414,11 +414,11 @@ $$;
 -- Registra una nueva zona segura y opcionalmente la vincula a una sede.
 -- Inserta en: zonas, y opcionalmente sede_zonas
 CREATE OR REPLACE PROCEDURE sp_zona_registrar(
-    p_nombre_zona     VARCHAR,
-    p_latitud_centro  NUMERIC,
+    p_nombre_zona VARCHAR,
+    p_latitud_centro NUMERIC,
     p_longitud_centro NUMERIC,
-    p_radio_metros    NUMERIC,
-    p_id_sede         INTEGER    -- NULL = no vincular a sede todavía
+    p_radio_metros NUMERIC,
+    p_id_sede INTEGER -- NULL = no vincular a sede todavía
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -437,11 +437,11 @@ $$;
 -- Actualiza los datos geográficos de una zona.
 -- Modifica: zonas
 CREATE OR REPLACE PROCEDURE sp_zona_editar(
-    p_id_zona         INTEGER,
-    p_nombre_zona     VARCHAR,
-    p_latitud_centro  NUMERIC,
+    p_id_zona INTEGER,
+    p_nombre_zona VARCHAR,
+    p_latitud_centro NUMERIC,
     p_longitud_centro NUMERIC,
-    p_radio_metros    NUMERIC
+    p_radio_metros NUMERIC
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -478,8 +478,8 @@ $$;
 -- Ajusta el stock de un medicamento en una sede (sobrescribe el valor).
 -- Modifica: inventario_medicinas
 CREATE OR REPLACE PROCEDURE sp_farmacia_ajustar_stock(
-    p_gtin        VARCHAR,
-    p_id_sede     INTEGER,
+    p_gtin VARCHAR,
+    p_id_sede INTEGER,
     p_stock_nuevo INTEGER
 )
 LANGUAGE plpgsql AS $$
@@ -498,12 +498,12 @@ $$;
 -- p_medicamentos es un array de pares (GTIN, cantidad)
 CREATE OR REPLACE PROCEDURE sp_farmacia_registrar_suministro(
     p_id_suministro INTEGER,
-    p_id_farmacia   INTEGER,
-    p_id_sede       INTEGER,
+    p_id_farmacia INTEGER,
+    p_id_sede INTEGER,
     p_fecha_entrega DATE,
-    p_estado        VARCHAR,       -- valor de cat_estado_suministro
-    p_gtins         VARCHAR[],     -- array de GTINs
-    p_cantidades    INTEGER[]      -- array de cantidades, mismo orden que p_gtins
+    p_estado VARCHAR, -- valor de cat_estado_suministro
+    p_gtins VARCHAR[], -- array de GTINs
+    p_cantidades INTEGER[] -- array de cantidades, mismo orden que p_gtins
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -546,13 +546,13 @@ $$;
 -- Registra un nuevo visitante en el catálogo.
 -- Inserta en: visitantes
 CREATE OR REPLACE PROCEDURE sp_visitante_registrar(
-    p_id_visitante  INTEGER,
-    p_nombre        VARCHAR,
-    p_apellido_p    VARCHAR,
-    p_apellido_m    VARCHAR,
-    p_relacion      VARCHAR,
-    p_telefono      VARCHAR,
-    p_curp          VARCHAR    -- puede ser NULL
+    p_id_visitante INTEGER,
+    p_nombre VARCHAR,
+    p_apellido_p VARCHAR,
+    p_apellido_m VARCHAR,
+    p_relacion VARCHAR,
+    p_telefono VARCHAR,
+    p_curp VARCHAR -- puede ser NULL
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -566,12 +566,12 @@ $$;
 -- Registra la entrada de una visita.
 -- Inserta en: visitas
 CREATE OR REPLACE PROCEDURE sp_visita_registrar_entrada(
-    p_id_visita    INTEGER,
-    p_id_paciente  INTEGER,
+    p_id_visita INTEGER,
+    p_id_paciente INTEGER,
     p_id_visitante INTEGER,
-    p_id_sede      INTEGER,
-    p_fecha        DATE,
-    p_hora         TIME
+    p_id_sede INTEGER,
+    p_fecha DATE,
+    p_hora TIME
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -589,9 +589,9 @@ $$;
 -- Registra la salida de una visita ya ingresada.
 -- Modifica: visitas
 CREATE OR REPLACE PROCEDURE sp_visita_registrar_salida(
-    p_id_visita    INTEGER,
+    p_id_visita INTEGER,
     p_fecha_salida DATE,
-    p_hora_salida  TIME
+    p_hora_salida TIME
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -606,13 +606,13 @@ $$;
 -- Registra una entrega externa recibida para un paciente.
 -- Inserta en: entregas_externas
 CREATE OR REPLACE PROCEDURE sp_entrega_registrar(
-    p_id_entrega      INTEGER,
-    p_id_paciente     INTEGER,
-    p_id_visitante    INTEGER,
-    p_id_cuidador     INTEGER,    -- puede ser NULL
-    p_descripcion     VARCHAR,
+    p_id_entrega INTEGER,
+    p_id_paciente INTEGER,
+    p_id_visitante INTEGER,
+    p_id_cuidador INTEGER, -- puede ser NULL
+    p_descripcion VARCHAR,
     p_fecha_recepcion DATE,
-    p_hora_recepcion  TIME
+    p_hora_recepcion TIME
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -634,12 +634,12 @@ $$;
 -- Registra una receta completa con sus líneas de medicamentos.
 -- Inserta en: recetas, receta_medicamentos (una fila por medicamento)
 CREATE OR REPLACE PROCEDURE sp_receta_registrar(
-    p_id_receta   INTEGER,
+    p_id_receta INTEGER,
     p_id_paciente INTEGER,
-    p_fecha       DATE,
-    p_gtins       VARCHAR[],    -- array de GTINs
-    p_dosis       VARCHAR[],    -- array de dosis, mismo orden
-    p_frecuencias INTEGER[]     -- array de frecuencias en horas, mismo orden
+    p_fecha DATE,
+    p_gtins VARCHAR[], -- array de GTINs
+    p_dosis VARCHAR[], -- array de dosis, mismo orden
+    p_frecuencias INTEGER[] -- array de frecuencias en horas, mismo orden
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -658,8 +658,8 @@ $$;
 -- Asigna un dispositivo NFC para gestionar la lectura de una receta.
 -- Inserta en: receta_nfc
 CREATE OR REPLACE PROCEDURE sp_receta_asignar_nfc(
-    p_id_receta            INTEGER,
-    p_id_dispositivo       INTEGER,
+    p_id_receta INTEGER,
+    p_id_dispositivo INTEGER,
     p_fecha_inicio_gestion DATE
 )
 LANGUAGE plpgsql AS $$
@@ -683,13 +683,13 @@ $$;
 -- Registra una lectura GPS de un dispositivo.
 -- Inserta en: lecturas_gps
 CREATE OR REPLACE PROCEDURE sp_iot_registrar_lectura_gps(
-    p_id_lectura     INTEGER,
+    p_id_lectura INTEGER,
     p_id_dispositivo INTEGER,
-    p_fecha_hora     TIMESTAMP,
-    p_latitud        NUMERIC,
-    p_longitud       NUMERIC,
-    p_altura         NUMERIC,    -- puede ser NULL
-    p_nivel_bateria  INTEGER     -- 0-100, puede ser NULL
+    p_fecha_hora TIMESTAMP,
+    p_latitud NUMERIC,
+    p_longitud NUMERIC,
+    p_altura NUMERIC, -- puede ser NULL
+    p_nivel_bateria INTEGER -- 0-100, puede ser NULL
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -705,11 +705,11 @@ $$;
 -- Registra una detección de beacon en un gateway.
 -- Inserta en: detecciones_beacon
 CREATE OR REPLACE PROCEDURE sp_iot_registrar_deteccion_beacon(
-    p_id_deteccion   INTEGER,
+    p_id_deteccion INTEGER,
     p_id_dispositivo INTEGER,
-    p_id_gateway     INTEGER,
-    p_fecha_hora     TIMESTAMP,
-    p_rssi           INTEGER
+    p_id_gateway INTEGER,
+    p_fecha_hora TIMESTAMP,
+    p_rssi INTEGER
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -728,10 +728,10 @@ $$;
 CREATE OR REPLACE PROCEDURE sp_iot_registrar_lectura_nfc(
     p_id_lectura_nfc INTEGER,
     p_id_dispositivo INTEGER,
-    p_id_receta      INTEGER,
-    p_fecha_hora     TIMESTAMP,
-    p_tipo_lectura   VARCHAR,    -- 'Administración', 'Verificación', 'Rechazo'
-    p_resultado      VARCHAR     -- 'Exitosa', 'Fallida', 'Sin respuesta'
+    p_id_receta INTEGER,
+    p_fecha_hora TIMESTAMP,
+    p_tipo_lectura VARCHAR, -- 'Administración', 'Verificación', 'Rechazo'
+    p_resultado VARCHAR -- 'Exitosa', 'Fallida', 'Sin respuesta'
 )
 LANGUAGE plpgsql AS $$
 BEGIN

@@ -22,9 +22,9 @@
 -- Inserta en: recetas
 -- Precondiciones: id_paciente debe existir y no estar dado de baja (id_estado != 3)
 CREATE OR REPLACE PROCEDURE sp_receta_crear(
-    p_id_receta  INTEGER,   -- PK manual
+    p_id_receta INTEGER, -- PK manual
     p_id_paciente INTEGER,
-    p_fecha       DATE
+    p_fecha DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -51,11 +51,11 @@ $$;
 -- Inserta en: receta_medicamentos
 -- Precondiciones: receta y medicamento (gtin) deben existir
 CREATE OR REPLACE PROCEDURE sp_receta_agregar_medicamento(
-    p_id_detalle       INTEGER,   -- PK manual de receta_medicamentos
-    p_id_receta        INTEGER,
-    p_gtin             VARCHAR,   -- FK a medicamentos.gtin
-    p_dosis            VARCHAR,   -- ej. '10mg'
-    p_frecuencia_horas INTEGER    -- ej. 8, 12, 24
+    p_id_detalle INTEGER, -- PK manual de receta_medicamentos
+    p_id_receta INTEGER,
+    p_gtin VARCHAR, -- FK a medicamentos.gtin
+    p_dosis VARCHAR, -- ej. '10mg'
+    p_frecuencia_horas INTEGER -- ej. 8, 12, 24
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -85,7 +85,7 @@ $$;
 -- Precondiciones: el detalle debe pertenecer a la receta indicada
 CREATE OR REPLACE PROCEDURE sp_receta_quitar_medicamento(
     p_id_detalle INTEGER,
-    p_id_receta  INTEGER
+    p_id_receta INTEGER
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -105,9 +105,9 @@ $$;
 -- Actualiza la dosis o frecuencia de un medicamento en una receta.
 -- Modifica: receta_medicamentos
 CREATE OR REPLACE PROCEDURE sp_receta_actualizar_medicamento(
-    p_id_detalle       INTEGER,
-    p_id_receta        INTEGER,
-    p_dosis            VARCHAR,
+    p_id_detalle INTEGER,
+    p_id_receta INTEGER,
+    p_dosis VARCHAR,
     p_frecuencia_horas INTEGER
 )
 LANGUAGE plpgsql AS $$
@@ -140,9 +140,9 @@ $$;
 -- Regla: una receta sólo puede tener un NFC activo a la vez
 --        (uq_nfc_activo_por_receta). Verificar antes de insertar.
 CREATE OR REPLACE PROCEDURE sp_receta_activar_nfc(
-    p_id_receta           INTEGER,
-    p_id_dispositivo      INTEGER,   -- debe ser tipo NFC
-    p_fecha_inicio        DATE
+    p_id_receta INTEGER,
+    p_id_dispositivo INTEGER, -- debe ser tipo NFC
+    p_fecha_inicio DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -177,9 +177,9 @@ $$;
 -- Modifica: receta_nfc (fecha_fin_gestion)
 -- Útil cuando se cambia de pulsera o el paciente se da de baja.
 CREATE OR REPLACE PROCEDURE sp_receta_cerrar_nfc(
-    p_id_receta      INTEGER,
+    p_id_receta INTEGER,
     p_id_dispositivo INTEGER,
-    p_fecha_fin      DATE
+    p_fecha_fin DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -205,9 +205,9 @@ $$;
 -- Cierra el vínculo actual e inicia uno nuevo.
 -- Modifica: receta_nfc (UPDATE + INSERT)
 CREATE OR REPLACE PROCEDURE sp_receta_cambiar_nfc(
-    p_id_receta              INTEGER,
-    p_id_dispositivo_nuevo   INTEGER,
-    p_fecha_cambio           DATE
+    p_id_receta INTEGER,
+    p_id_dispositivo_nuevo INTEGER,
+    p_fecha_cambio DATE
 )
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -254,17 +254,17 @@ $$;
 CREATE OR REPLACE PROCEDURE sp_nfc_registrar_lectura(
     p_id_lectura_nfc INTEGER,
     p_id_dispositivo INTEGER,
-    p_id_receta      INTEGER,
-    p_fecha_hora     TIMESTAMP,
-    p_tipo_lectura   VARCHAR,   -- 'Administración' | 'Verificación'
-    p_resultado      VARCHAR    -- 'Exitosa' | 'Fallida'
+    p_id_receta INTEGER,
+    p_fecha_hora TIMESTAMP,
+    p_tipo_lectura VARCHAR, -- 'Administración' | 'Verificación'
+    p_resultado VARCHAR -- 'Exitosa' | 'Fallida'
 )
 LANGUAGE plpgsql AS $$
 BEGIN
     -- Verificar que el vínculo NFC–receta existe y está activo
     IF NOT EXISTS (
         SELECT 1 FROM receta_nfc
-        WHERE id_receta      = p_id_receta
+        WHERE id_receta = p_id_receta
           AND id_dispositivo = p_id_dispositivo
           AND fecha_fin_gestion IS NULL
     ) THEN
@@ -299,8 +299,8 @@ $$;
 -- Modifica: receta_nfc
 -- NOTA: No elimina la receta para preservar el historial.
 CREATE OR REPLACE PROCEDURE sp_receta_cerrar(
-    p_id_receta  INTEGER,
-    p_fecha_fin  DATE
+    p_id_receta INTEGER,
+    p_fecha_fin DATE
 )
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -327,7 +327,7 @@ $$;
 -- Cierra cualquier asignación activa previa del paciente o del dispositivo,
 -- luego abre una nueva en asignacion_nfc.
 CREATE OR REPLACE PROCEDURE sp_nfc_asignar(
-    p_id_paciente    INTEGER,
+    p_id_paciente INTEGER,
     p_id_dispositivo INTEGER
 )
 LANGUAGE plpgsql AS $$

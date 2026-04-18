@@ -35,9 +35,9 @@
 --   - 'Cuidador % no encontrado.'
 -- =============================================================================
 CREATE OR REPLACE PROCEDURE sp_cuidador_registrar_ronda(
-    p_id_beacon   INTEGER,
-    p_id_cuidador INTEGER,   -- NULL permitido (ronda anónima)
-    p_rssi        INTEGER    -- 0 si check-in manual
+    p_id_beacon INTEGER,
+    p_id_cuidador INTEGER, -- NULL permitido (ronda anónima)
+    p_rssi INTEGER -- 0 si check-in manual
 )
 LANGUAGE plpgsql AS $$
 DECLARE

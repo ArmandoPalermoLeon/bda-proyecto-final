@@ -1,0 +1,267 @@
+GUÍA DE USO — AppProcedures.sql
+Procedimientos almacenados DML para app.py
+===========================================
+
+
+1. sp_ins_paciente
+------------------
+Registra un paciente nuevo y lo asigna a una sede en un solo paso.
+
+Parámetros:
+  - p_id_paciente       : ID entero del paciente (se ingresa manualmente en el form)
+  - p_nombre            : Nombre del paciente
+  - p_apellido_p        : Apellido paterno
+  - p_apellido_m        : Apellido materno
+  - p_fecha_nacimiento  : Fecha de nacimiento (formato YYYY-MM-DD)
+  - p_id_estado         : ID del estado inicial (1 = Activo, 2 = En Hospital, 3 = Baja)
+  - p_id_sede           : ID de la sede donde se registra
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_paciente(%s, %s, %s, %s, %s, %s, %s)",
+             (id_pac, nombre, apellido_p, apellido_m, fecha_nac, id_estado, id_sede))
+
+Lo que hace internamente:
+  Inserta el registro en la tabla pacientes y al mismo tiempo crea la entrada
+  correspondiente en sede_pacientes con fecha y hora de ingreso actuales.
+  El ID de sede_pacientes se calcula automáticamente dentro del procedimiento.
+
+Ruta que lo usa: POST /pacientes/nuevo
+
+
+---
+
+
+2. sp_upd_paciente
+------------------
+Actualiza los datos personales y el estado de un paciente existente.
+
+Parámetros:
+  - p_id_paciente       : ID del paciente a modificar
+  - p_nombre            : Nombre nuevo
+  - p_apellido_p        : Apellido paterno nuevo
+  - p_apellido_m        : Apellido materno nuevo
+  - p_fecha_nacimiento  : Fecha de nacimiento nueva
+  - p_id_estado         : Estado nuevo
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_paciente(%s, %s, %s, %s, %s, %s)",
+             (id, nombre, apellido_p, apellido_m, fecha_nac, id_estado))
+
+Lo que hace internamente:
+  Hace un UPDATE sobre la tabla pacientes usando el ID como llave.
+  No toca sede_pacientes ni ninguna otra tabla.
+
+Ruta que lo usa: POST /pacientes/editar/<id>
+
+
+---
+
+
+3. sp_del_paciente
+------------------
+Realiza la baja lógica de un paciente (soft delete).
+
+Parámetros:
+  - p_id_paciente : ID del paciente a dar de baja
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_del_paciente(%s)", (id,))
+
+Lo que hace internamente:
+  Cambia id_estado a 3 (Baja) en la tabla pacientes.
+  El registro no se borra físicamente, solo queda excluido de las vistas activas.
+
+Ruta que lo usa: POST /pacientes/eliminar/<id>
+
+
+---
+
+
+4. sp_ins_enfermedad
+--------------------
+Agrega un diagnóstico de enfermedad al historial de un paciente.
+
+Parámetros:
+  - p_id_paciente   : ID del paciente
+  - p_id_enfermedad : ID de la enfermedad (catálogo enfermedades)
+  - p_fecha_diag    : Fecha del diagnóstico (formato YYYY-MM-DD)
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_enfermedad(%s, %s, %s)", (id, id_enfermedad, fecha_diag))
+
+Lo que hace internamente:
+  Inserta una fila en tiene_enfermedad con la combinación paciente-enfermedad-fecha.
+  Si la combinación ya existe la base de datos rechazará el INSERT (constraint único).
+
+Ruta que lo usa: POST /pacientes/<id>/agregar-enfermedad
+
+
+---
+
+
+5. sp_del_enfermedad
+--------------------
+Elimina un diagnóstico del historial de un paciente.
+
+Parámetros:
+  - p_id_paciente   : ID del paciente
+  - p_id_enfermedad : ID de la enfermedad a quitar
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_del_enfermedad(%s, %s)", (id, id_enfermedad))
+
+Lo que hace internamente:
+  Borra la fila de tiene_enfermedad que coincida con ambos IDs.
+  Si no existe la combinación simplemente no hace nada (DELETE sin coincidencia).
+
+Ruta que lo usa: POST /pacientes/<id>/quitar-enfermedad
+
+
+---
+
+
+6. sp_ins_contacto
+------------------
+Registra un contacto de emergencia y lo vincula al paciente en un solo paso.
+
+Parámetros:
+  - p_id_paciente : ID del paciente al que pertenece el contacto
+  - p_nombre      : Nombre del contacto
+  - p_apellido_p  : Apellido paterno
+  - p_apellido_m  : Apellido materno (puede ser NULL)
+  - p_telefono    : Teléfono del contacto
+  - p_relacion    : Relación con el paciente (ej. "Hijo", "Esposa")
+  - p_email       : Correo electrónico (puede ser NULL)
+  - p_pin_acceso  : PIN para acceso al portal familiar (puede ser NULL)
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_contacto(%s, %s, %s, %s, %s, %s, %s, %s)",
+             (id, nombre, apellido_p, apellido_m, telefono, relacion, email, pin_acceso))
+
+Lo que hace internamente:
+  Calcula el siguiente ID disponible en contactos_emergencia.
+  Calcula la siguiente prioridad para ese paciente en paciente_contactos.
+  Inserta en contactos_emergencia y luego en paciente_contactos con la prioridad correcta.
+  Todo en una sola transacción.
+
+Ruta que lo usa: POST /pacientes/<id>/agregar-contacto
+
+
+---
+
+
+7. sp_ins_kit
+-------------
+Asigna un dispositivo GPS a un paciente.
+
+Parámetros:
+  - p_id_paciente        : ID del paciente
+  - p_id_dispositivo_gps : ID del dispositivo GPS a asignar
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_kit(%s, %s)", (id, id_gps))
+
+Lo que hace internamente:
+  Calcula el siguiente ID para asignacion_kit e inserta la fila con fecha de entrega actual.
+  La base de datos tiene un índice parcial (uq_gps_activo) que impide asignar el mismo
+  GPS a dos pacientes al mismo tiempo. Si el dispositivo ya está activo en otra asignación,
+  el procedimiento fallará con un error de constraint.
+
+Ruta que lo usa: POST /pacientes/<id>/asignar-kit
+
+
+---
+
+
+8. sp_ins_turno
+---------------
+Registra un nuevo turno de cuidador en una zona.
+
+Parámetros:
+  - p_id_turno    : ID del turno (se ingresa manualmente en el form)
+  - p_id_cuidador : ID del cuidador (empleado)
+  - p_id_zona     : ID de la zona asignada
+  - p_hora_inicio : Hora de inicio del turno (formato HH:MM)
+  - p_hora_fin    : Hora de fin del turno (formato HH:MM)
+  - p_lunes       : TRUE si el turno aplica los lunes
+  - p_martes      : TRUE si aplica los martes
+  - p_miercoles   : TRUE si aplica los miércoles
+  - p_jueves      : TRUE si aplica los jueves
+  - p_viernes     : TRUE si aplica los viernes
+  - p_sabado      : TRUE si aplica los sábados
+  - p_domingo     : TRUE si aplica los domingos
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_ins_turno(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+             (id_turno, id_cuidador, id_zona, hora_inicio, hora_fin,
+              dias["lunes"], dias["martes"], dias["miercoles"], dias["jueves"],
+              dias["viernes"], dias["sabado"], dias["domingo"]))
+
+Lo que hace internamente:
+  Inserta la fila en turno_cuidador con activo = TRUE por defecto.
+  Los días de la semana vienen del formulario como checkboxes; si no se marcó un día
+  llega como False desde Python.
+
+Ruta que lo usa: POST /turnos/nuevo
+
+
+---
+
+
+9. sp_upd_turno
+---------------
+Actualiza un turno existente incluyendo el flag activo.
+
+Parámetros:
+  - p_id_turno    : ID del turno a modificar
+  - p_id_cuidador : Nuevo cuidador asignado
+  - p_id_zona     : Nueva zona
+  - p_hora_inicio : Nueva hora de inicio
+  - p_hora_fin    : Nueva hora de fin
+  - p_lunes       : Boolean lunes
+  - p_martes      : Boolean martes
+  - p_miercoles   : Boolean miércoles
+  - p_jueves      : Boolean jueves
+  - p_viernes     : Boolean viernes
+  - p_sabado      : Boolean sábado
+  - p_domingo     : Boolean domingo
+  - p_activo      : TRUE para turno activo, FALSE para desactivarlo sin borrarlo
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_upd_turno(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+             (id, id_cuidador, id_zona, hora_inicio, hora_fin,
+              dias["lunes"], dias["martes"], dias["miercoles"], dias["jueves"],
+              dias["viernes"], dias["sabado"], dias["domingo"], activo))
+
+Lo que hace internamente:
+  Hace UPDATE sobre turno_cuidador usando id_turno como llave.
+  El campo activo permite desactivar un turno sin eliminarlo, útil para
+  suspensiones temporales de cuidadores.
+
+Ruta que lo usa: POST /turnos/editar/<id>
+
+
+---
+
+
+10. sp_del_turno
+----------------
+Elimina un turno de forma permanente.
+
+Parámetros:
+  - p_id_turno : ID del turno a eliminar
+
+Cómo se llama en app.py:
+  db.execute("CALL sp_del_turno(%s)", (id,))
+
+Lo que hace internamente:
+  DELETE directo sobre turno_cuidador. A diferencia del paciente, el turno
+  sí se borra físicamente porque no tiene historial que preservar.
+
+Ruta que lo usa: POST /turnos/eliminar/<id>
+
+
+===========================================
+Total: 10 procedimientos — módulos pacientes y turnos
+Archivo SQL: AppProcedures.sql
+Aplicar con: psql -U palermingoat -d alzheimer -f AppProcedures.sql

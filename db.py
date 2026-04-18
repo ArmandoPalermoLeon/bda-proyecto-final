@@ -1,26 +1,26 @@
 import os
-import psycopg2
-import psycopg2.extras
+import psycopg
+from psycopg.rows import dict_row
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
 def get_conn():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.getenv("DB_HOST", "localhost"),
         port=int(os.getenv("DB_PORT", 5432)),
         dbname=os.getenv("DB_NAME", "alzheimer"),
         user=os.getenv("DB_USER", "palermingoat"),
-        password=os.getenv("DB_PASSWORD", "") or None,
+        password=os.getenv("DB_PASSWORD") or None,
     )
 
 
 def query(sql, params=None):
-    """Run SELECT and return list of RealDictRow."""
+    """Run SELECT and return list of dicts."""
     conn = get_conn()
     try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(sql, params or ())
             return cur.fetchall()
     finally:
@@ -28,7 +28,7 @@ def query(sql, params=None):
 
 
 def one(sql, params=None):
-    """Run SELECT and return first row as RealDictRow, or None."""
+    """Run SELECT and return first row as dict, or None."""
     rows = query(sql, params)
     return rows[0] if rows else None
 

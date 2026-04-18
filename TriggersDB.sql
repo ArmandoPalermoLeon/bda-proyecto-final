@@ -25,10 +25,10 @@ DROP FUNCTION IF EXISTS fn_verificar_cobertura_zona();
 CREATE OR REPLACE FUNCTION fn_verificar_cobertura_zona()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
-    r_zona       RECORD;
-    v_ultima     TIMESTAMP;
-    v_id_alerta  INTEGER;
-    v_dow        INTEGER;
+    r_zona RECORD;
+    v_ultima TIMESTAMP;
+    v_id_alerta INTEGER;
+    v_dow INTEGER;
 BEGIN
     -- día de la semana del evento (0=domingo … 6=sábado en PostgreSQL)
     v_dow := EXTRACT(DOW FROM NEW.fecha_hora)::INTEGER;
@@ -39,14 +39,14 @@ BEGIN
         FROM turno_cuidador tc
         WHERE tc.activo = TRUE
           AND tc.hora_inicio <= NEW.fecha_hora::TIME
-          AND tc.hora_fin    >  NEW.fecha_hora::TIME
+          AND tc.hora_fin > NEW.fecha_hora::TIME
           AND (
-              (v_dow = 1 AND tc.lunes)    OR
-              (v_dow = 2 AND tc.martes)   OR
+              (v_dow = 1 AND tc.lunes) OR
+              (v_dow = 2 AND tc.martes) OR
               (v_dow = 3 AND tc.miercoles) OR
-              (v_dow = 4 AND tc.jueves)   OR
-              (v_dow = 5 AND tc.viernes)  OR
-              (v_dow = 6 AND tc.sabado)   OR
+              (v_dow = 4 AND tc.jueves) OR
+              (v_dow = 5 AND tc.viernes) OR
+              (v_dow = 6 AND tc.sabado) OR
               (v_dow = 0 AND tc.domingo)
           )
     LOOP
@@ -54,18 +54,18 @@ BEGIN
         SELECT MAX(db.fecha_hora) INTO v_ultima
         FROM detecciones_beacon db
         JOIN beacon_zona bz ON db.id_dispositivo = bz.id_dispositivo
-        WHERE bz.id_zona      = r_zona.id_zona
+        WHERE bz.id_zona = r_zona.id_zona
           AND db.id_cuidador IS NOT NULL
-          AND db.fecha_hora  >= NEW.fecha_hora - INTERVAL '30 minutes';
+          AND db.fecha_hora >= NEW.fecha_hora - INTERVAL '30 minutes';
 
         -- si no hubo presencia reciente, crear alerta (evitar duplicados activos)
         IF v_ultima IS NULL THEN
             IF NOT EXISTS (
                 SELECT 1 FROM alertas
-                WHERE id_zona     = r_zona.id_zona
+                WHERE id_zona = r_zona.id_zona
                   AND tipo_alerta = 'Zona sin cobertura'
-                  AND estatus     = 'Activa'
-                  AND fecha_hora  >= NEW.fecha_hora - INTERVAL '2 hours'
+                  AND estatus = 'Activa'
+                  AND fecha_hora >= NEW.fecha_hora - INTERVAL '2 hours'
             ) THEN
                 SELECT COALESCE(MAX(id_alerta), 0) + 1 INTO v_id_alerta FROM alertas;
                 INSERT INTO alertas
@@ -99,9 +99,9 @@ DROP FUNCTION IF EXISTS fn_bateria_baja_gps();
 CREATE OR REPLACE FUNCTION fn_bateria_baja_gps()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
-    v_id_paciente  INTEGER;
-    v_id_alerta    INTEGER;
-    v_id_origen    INTEGER;
+    v_id_paciente INTEGER;
+    v_id_alerta INTEGER;
+    v_id_origen INTEGER;
 BEGIN
     -- Solo actuar cuando la batería es crítica
     IF NEW.nivel_bateria IS NULL OR NEW.nivel_bateria > 15 THEN
@@ -125,8 +125,8 @@ BEGIN
         SELECT 1 FROM alertas
         WHERE id_paciente = v_id_paciente
           AND tipo_alerta = 'Batería Baja'
-          AND estatus     = 'Activa'
-          AND fecha_hora  >= NEW.fecha_hora - INTERVAL '2 hours'
+          AND estatus = 'Activa'
+          AND fecha_hora >= NEW.fecha_hora - INTERVAL '2 hours'
     ) THEN
         RETURN NEW;
     END IF;
@@ -167,12 +167,12 @@ DROP FUNCTION IF EXISTS fn_zona_exit_gps();
 CREATE OR REPLACE FUNCTION fn_zona_exit_gps()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
-    v_id_paciente  INTEGER;
-    v_id_sede      INTEGER;
-    v_dentro       BOOLEAN;
-    v_id_alerta    INTEGER;
-    v_id_origen    INTEGER;
-    v_zona_names   TEXT;
+    v_id_paciente INTEGER;
+    v_id_sede INTEGER;
+    v_dentro BOOLEAN;
+    v_id_alerta INTEGER;
+    v_id_origen INTEGER;
+    v_zona_names TEXT;
 BEGIN
     -- El punto debe tener coordenadas PostGIS para poder comparar
     IF NEW.geom IS NULL THEN
@@ -219,8 +219,8 @@ BEGIN
         SELECT 1 FROM alertas
         WHERE id_paciente = v_id_paciente
           AND tipo_alerta = 'Salida de Zona'
-          AND estatus     = 'Activa'
-          AND fecha_hora  >= NEW.fecha_hora - INTERVAL '1 hour'
+          AND estatus = 'Activa'
+          AND fecha_hora >= NEW.fecha_hora - INTERVAL '1 hour'
     ) THEN
         RETURN NEW;
     END IF;
