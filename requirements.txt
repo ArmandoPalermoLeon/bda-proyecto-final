@@ -2,3 +2,5 @@ Flask==3.0.3
 python-dotenv==1.0.1
 psycopg>=3.1
 reportlab>=4.0
+bleak>=0.21
+requests>=2.31

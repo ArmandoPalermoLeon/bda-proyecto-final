@@ -145,6 +145,44 @@ $$;
 -- TURNOS
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- BEACON — asignación y detección
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_ins_asignacion_beacon(
+    p_id_dispositivo INT,
+    p_id_cuidador INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO asignacion_beacon (id_dispositivo, id_cuidador, fecha_inicio)
+    VALUES (p_id_dispositivo, p_id_cuidador, CURRENT_DATE);
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_ins_deteccion_beacon(
+    p_id_dispositivo INT,
+    p_id_cuidador INT,
+    p_rssi INT,
+    p_gateway_id VARCHAR
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_next_id INT;
+BEGIN
+    SELECT COALESCE(MAX(id_deteccion), 0) + 1 INTO v_next_id FROM detecciones_beacon;
+
+    INSERT INTO detecciones_beacon (id_deteccion, id_dispositivo, id_cuidador, fecha_hora, rssi, id_gateway)
+    VALUES (v_next_id, p_id_dispositivo, p_id_cuidador, NOW(), p_rssi, p_gateway_id);
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- TURNOS
+-- ─────────────────────────────────────────────────────────────────────────────
+
 CREATE OR REPLACE PROCEDURE sp_ins_turno(
     p_id_turno INT,
     p_id_cuidador INT,

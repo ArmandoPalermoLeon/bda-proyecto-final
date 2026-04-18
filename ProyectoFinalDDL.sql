@@ -36,6 +36,7 @@ DROP TABLE IF EXISTS lecturas_nfc CASCADE;
 DROP TABLE IF EXISTS receta_nfc CASCADE;
 DROP TABLE IF EXISTS receta_medicamentos CASCADE;
 DROP TABLE IF EXISTS recetas CASCADE;
+DROP TABLE IF EXISTS asignacion_beacon CASCADE;
 DROP TABLE IF EXISTS detecciones_beacon CASCADE;
 DROP TABLE IF EXISTS lecturas_gps CASCADE;
 DROP TABLE IF EXISTS asignacion_nfc CASCADE;
@@ -414,9 +415,10 @@ CREATE TABLE lecturas_gps(
 CREATE TABLE detecciones_beacon(
   id_deteccion INTEGER PRIMARY KEY,
   id_dispositivo INTEGER NOT NULL,
-  id_cuidador INTEGER,    -- cuidador que realizó la ronda (NULL si anónimo)
+  id_cuidador INTEGER,
   fecha_hora TIMESTAMP NOT NULL,
   rssi INTEGER NOT NULL,
+  id_gateway VARCHAR(50) DEFAULT 'central',
   CONSTRAINT fk_db_dispositivo
     FOREIGN KEY (id_dispositivo) REFERENCES dispositivos (id_dispositivo)
     ON DELETE RESTRICT,
@@ -425,6 +427,21 @@ CREATE TABLE detecciones_beacon(
     ON DELETE SET NULL,
   CONSTRAINT uq_db_instante UNIQUE (id_dispositivo, fecha_hora)
 );
+
+-- Beacon carried by caregiver (new architecture: caregiver-worn beacon, detected by central computer)
+-- beacon_zona still exists for the wall-mounted approach — both coexist
+CREATE TABLE asignacion_beacon (
+  id_asignacion SERIAL PRIMARY KEY,
+  id_dispositivo INTEGER NOT NULL,
+  id_cuidador INTEGER NOT NULL,
+  fecha_inicio DATE NOT NULL DEFAULT CURRENT_DATE,
+  fecha_fin DATE,
+  CONSTRAINT fk_ab_dispositivo FOREIGN KEY (id_dispositivo) REFERENCES dispositivos(id_dispositivo) ON DELETE RESTRICT,
+  CONSTRAINT fk_ab_cuidador FOREIGN KEY (id_cuidador) REFERENCES cuidadores(id_empleado) ON DELETE RESTRICT,
+  CONSTRAINT chk_ab_fechas CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
+);
+CREATE UNIQUE INDEX uq_beacon_activo_por_cuidador ON asignacion_beacon (id_cuidador) WHERE fecha_fin IS NULL;
+CREATE UNIQUE INDEX uq_beacon_dispositivo_activo ON asignacion_beacon (id_dispositivo) WHERE fecha_fin IS NULL;
 
 -- NUEVO: lecturas de chips NFC para adherencia terapéutica
 -- Separado de detecciones_beacon: beacon == presencia/ubicación, NFC == medicación

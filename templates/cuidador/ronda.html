@@ -293,8 +293,7 @@
         </div>
 
         <p class="rh-flag-note">
-            <strong>Nota:</strong> El escaneo pasivo de iBeacons requiere Chrome en Android con
-            <code>chrome://flags/#enable-experimental-web-platform-features</code> habilitado.
+            <strong>Nota:</strong> Requiere Chrome en Android con Bluetooth activado. Al iniciar la ronda aparecerá un selector — elige tu beacon de la lista.
         </p>
     </div>
 
@@ -413,15 +412,19 @@ async function reportBeacon(payload) {
 // ── BLE iBeacon scanning ───────────────────────────────────────────────────────
 async function startBLEScan() {
     try {
-        bleScanner = await navigator.bluetooth.requestLEScan({
-            acceptAllAdvertisements: true
+        // requestDevice shows native Bluetooth picker — user selects their beacon
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ manufacturerData: [{ companyIdentifier: 0x004C }] }]
         });
-        setStatus('ble-status', 'scanning', 'Escaneando iBeacons activos…<small>Muévete por el edificio para registrar zonas.</small>');
 
-        navigator.bluetooth.addEventListener('advertisementreceived', onAdvertisement);
+        bleScanner = device;
+        device.addEventListener('advertisementreceived', onAdvertisement);
+        await device.watchAdvertisements();
+
+        setStatus('ble-status', 'scanning', `Escuchando beacon: <strong>${device.name || device.id}</strong><small>El log se actualizará automáticamente al recibir señal.</small>`);
         return true;
     } catch (err) {
-        // requestLEScan not available or denied — fall back to manual mode
+        // User cancelled picker or Bluetooth unavailable — fall back to manual
         return false;
     }
 }
@@ -538,14 +541,12 @@ async function iniciarRonda() {
     document.getElementById('section-log').style.display   = 'block';
     startTimer();
 
-    // Try BLE passive scan first
-    const bleAvailable = navigator.bluetooth && typeof navigator.bluetooth.requestLEScan === 'function';
+    const bleAvailable = navigator.bluetooth && typeof navigator.bluetooth.requestDevice === 'function';
 
     if (bleAvailable) {
         document.getElementById('section-ble').style.display = 'block';
         const started = await startBLEScan();
         if (!started) {
-            // requestLEScan failed (permission denied or flag not enabled)
             document.getElementById('section-ble').style.display = 'none';
             showManualMode();
         }
@@ -560,9 +561,8 @@ function showManualMode() {
 
 function detenerRonda() {
     if (bleScanner) {
-        try { bleScanner.stop(); } catch(_) {}
+        try { bleScanner.unwatchAdvertisements(); } catch(_) {}
         bleScanner = null;
-        navigator.bluetooth.removeEventListener('advertisementreceived', onAdvertisement);
     }
     stopTimer();
 

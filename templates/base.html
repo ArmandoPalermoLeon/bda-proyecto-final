@@ -203,6 +203,20 @@
                 </svg>
                 Ronda Beacon
             </a>
+            <a href="{{ url_for('rondas_lista') }}" class="nav-item {% if request.endpoint == 'rondas_lista' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Log de Rondas
+            </a>
+            <a href="{{ url_for('beacon_asignaciones') }}" class="nav-item {% if request.endpoint == 'beacon_asignaciones' %}active{% endif %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+                </svg>
+                Beacons
+            </a>
             <a href="{{ url_for('test_nfc_page') }}" class="nav-item {% if request.endpoint == 'test_nfc_page' %}active{% endif %}" target="_blank">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 2C8 2 4 5 4 9c0 2.5 1.5 4.5 3 6l5 7 5-7c1.5-1.5 3-3.5 3-6 0-4-4-7-8-7z"/>

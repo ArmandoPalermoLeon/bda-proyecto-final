@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Asignación de Beacons{% endblock %}
+{% block page_title %}Asignación de beacons{% endblock %}
+{% block breadcrumb %}Inicio / Equipamiento / Beacons{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+    <div>
+        <div class="section-title">Beacons por cuidador</div>
+        <div class="section-sub">Cada cuidador lleva un beacon. El escáner central lo detecta automáticamente.</div>
+    </div>
+</div>
+
+{% if beacons and cuidadores %}
+<div class="card" style="margin-bottom:24px;">
+    <div style="padding:20px 24px; border-bottom:1px solid rgba(255,255,255,.06); font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.8px;">
+        Nueva asignación
+    </div>
+    <form method="POST" style="padding:20px 24px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+        <div style="flex:1; min-width:180px;">
+            <label style="display:block; font-size:11px; font-weight:600; color:#94a3b8; margin-bottom:6px;">Beacon</label>
+            <select name="id_dispositivo" required style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background:#0d2535; color:#f1f5f9; font-size:13px;">
+                <option value="">Selecciona un beacon</option>
+                {% for b in beacons %}
+                <option value="{{ b.id_dispositivo }}">{{ b.id_serial }} — {{ b.modelo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="flex:1; min-width:180px;">
+            <label style="display:block; font-size:11px; font-weight:600; color:#94a3b8; margin-bottom:6px;">Cuidador</label>
+            <select name="id_cuidador" required style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background:#0d2535; color:#f1f5f9; font-size:13px;">
+                <option value="">Selecciona un cuidador</option>
+                {% for c in cuidadores %}
+                <option value="{{ c.id_empleado }}">{{ c.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Asignar</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Beacon</th>
+                    <th>Cuidador</th>
+                    <th>Desde</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if asignaciones %}
+                    {% for a in asignaciones %}
+                    <tr>
+                        <td style="font-family:monospace; font-size:12px; color:#475569;">{{ a.id_serial }}</td>
+                        <td style="font-weight:600;">{{ a.nombre_cuidador }}</td>
+                        <td style="font-variant-numeric:tabular-nums; color:#64748b;">{{ a.fecha_inicio }}</td>
+                        <td>
+                            {% if a.fecha_fin is none %}
+                                <span class="badge" style="background:#d1fae5; color:#065f46;">Activa</span>
+                            {% else %}
+                                <span class="badge" style="background:#f1f5f9; color:#64748b;">Cerrada {{ a.fecha_fin }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if a.fecha_fin is none %}
+                            <form method="POST" action="{{ url_for('beacon_cerrar_asignacion', id=a.id_asignacion) }}">
+                                <button type="submit" class="btn btn-secondary btn-sm">Cerrar</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align:center; color:#8892a4; padding:36px;">
+                            No hay asignaciones registradas.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

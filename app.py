@@ -896,6 +896,93 @@ def turnos_eliminar(id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# ASIGNACIÓN BEACON → CUIDADOR
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/equipamiento/asignacion-beacons", methods=["GET", "POST"])
+@admin_requerido
+def beacon_asignaciones():
+    if request.method == "POST":
+        try:
+            id_dispositivo = int(request.form["id_dispositivo"])
+            id_cuidador    = int(request.form["id_cuidador"])
+            db.execute("CALL sp_ins_asignacion_beacon(%s, %s)", (id_dispositivo, id_cuidador))
+            flash("Beacon asignado correctamente.", "success")
+        except Exception as e:
+            flash(f"Error al asignar beacon: {e}", "error")
+        return redirect(url_for("beacon_asignaciones"))
+
+    asignaciones = db.query(
+        """SELECT ab.id_asignacion, ab.fecha_inicio, ab.fecha_fin,
+                  d.id_serial, d.modelo,
+                  e.nombre || ' ' || e.apellido_p AS nombre_cuidador
+           FROM asignacion_beacon ab
+           JOIN dispositivos d ON ab.id_dispositivo = d.id_dispositivo
+           JOIN empleados e    ON ab.id_cuidador    = e.id_empleado
+           ORDER BY ab.fecha_fin IS NULL DESC, ab.fecha_inicio DESC"""
+    )
+    beacons = db.query(
+        """SELECT d.id_dispositivo, d.id_serial, d.modelo
+           FROM dispositivos d
+           WHERE d.tipo = 'BEACON'
+             AND d.id_dispositivo NOT IN (
+                 SELECT id_dispositivo FROM asignacion_beacon WHERE fecha_fin IS NULL)
+           ORDER BY d.id_serial"""
+    )
+    cuidadores = db.query(
+        """SELECT c.id_empleado, e.nombre || ' ' || e.apellido_p AS nombre
+           FROM cuidadores c JOIN empleados e ON c.id_empleado = e.id_empleado
+           WHERE c.id_empleado NOT IN (
+               SELECT id_cuidador FROM asignacion_beacon WHERE fecha_fin IS NULL)
+           ORDER BY e.nombre"""
+    )
+    return render_template("equipamiento/asignacion_beacons.html",
+                           asignaciones=asignaciones,
+                           beacons=beacons,
+                           cuidadores=cuidadores)
+
+
+@app.route("/equipamiento/asignacion-beacons/<int:id>/cerrar", methods=["POST"])
+@admin_requerido
+def beacon_cerrar_asignacion(id):
+    try:
+        db.execute(
+            "UPDATE asignacion_beacon SET fecha_fin = CURRENT_DATE WHERE id_asignacion = %s",
+            (id,)
+        )
+        flash("Asignación cerrada correctamente.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("beacon_asignaciones"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RONDAS BEACON
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/rondas")
+@admin_requerido
+def rondas_lista():
+    rondas = db.query("""
+        SELECT db.id_deteccion,
+               db.fecha_hora,
+               db.rssi,
+               z.nombre_zona,
+               d.id_serial AS serial_beacon,
+               COALESCE(e.nombre || ' ' || e.apellido_p, 'Anónimo') AS nombre_cuidador
+        FROM detecciones_beacon db
+        JOIN dispositivos d ON db.id_dispositivo = d.id_dispositivo
+        LEFT JOIN beacon_zona bz ON db.id_dispositivo = bz.id_dispositivo
+        LEFT JOIN zonas z ON bz.id_zona = z.id_zona
+        LEFT JOIN cuidadores c ON db.id_cuidador = c.id_empleado
+        LEFT JOIN empleados e ON c.id_empleado = e.id_empleado
+        ORDER BY db.fecha_hora DESC
+        LIMIT 200
+    """)
+    return render_template("rondas/lista.html", rondas=rondas)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ALERTAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -2429,14 +2516,13 @@ def api_beacon_deteccion():
         # Allow calls that originate from our own ronda page even without session
         pass  # fall through — ronda page posts without session
 
-    data = request.get_json(silent=True) or {}
-    id_cuidador = data.get("id_empleado")   # accepts legacy field name
-    id_beacon   = data.get("id_beacon")
-    serial      = data.get("serial")
-    rssi        = data.get("rssi")
+    data       = request.get_json(silent=True) or {}
+    rssi       = data.get("rssi", 0)
+    gateway_id = data.get("gateway_id", "central")
+    id_beacon  = data.get("id_beacon")
+    serial     = data.get("serial")
 
-    # ── Resolve beacon ─────────────────────────────────────────────────────────
-    # Priority: id_beacon > serial > uuid+major+minor composite key
+    # ── Resolve beacon: id_beacon > serial > uuid+major+minor ─────────────────
     if not id_beacon and serial:
         row = db.one(
             "SELECT id_dispositivo FROM dispositivos WHERE tipo='BEACON' AND LOWER(id_serial)=LOWER(%s)",
@@ -2446,7 +2532,6 @@ def api_beacon_deteccion():
             id_beacon = row["id_dispositivo"]
 
     if not id_beacon and data.get("uuid") and data.get("major") is not None and data.get("minor") is not None:
-        # Build composite key from first 8 chars of UUID + Major + Minor
         uuid_prefix = str(data["uuid"]).upper()[:8]
         composite   = f"{uuid_prefix}-{data['major']}-{data['minor']}"
         row = db.one(
@@ -2456,42 +2541,34 @@ def api_beacon_deteccion():
         if row:
             id_beacon = row["id_dispositivo"]
 
-    # ── Resolve cuidador from session if not provided ──────────────────────────
-    if not id_cuidador and session.get("medico"):
-        emp = db.one(
-            "SELECT c.id_empleado FROM cuidadores c JOIN empleados e ON c.id_empleado = e.id_empleado WHERE e.usuario = %s",
-            [session.get("medico")]
-        )
-        if emp:
-            id_cuidador = emp["id_empleado"]
-
     if not id_beacon:
-        return jsonify({"status": "error", "message": "Beacon no identificado (falta id_beacon, serial, o uuid+major+minor)"}), 400
+        return jsonify({"status": "error", "message": "Beacon no identificado"}), 400
+
+    # ── Resolve caregiver from asignacion_beacon ───────────────────────────────
+    cuidador = db.one(
+        """SELECT ab.id_cuidador, e.nombre || ' ' || e.apellido_p AS nombre
+           FROM asignacion_beacon ab
+           JOIN empleados e ON ab.id_cuidador = e.id_empleado
+           WHERE ab.id_dispositivo = %s AND ab.fecha_fin IS NULL""",
+        [id_beacon]
+    )
+    id_cuidador    = cuidador["id_cuidador"] if cuidador else None
+    caregiver_name = cuidador["nombre"]      if cuidador else "Sin asignar"
 
     try:
-        # sp_cuidador_registrar_ronda handles ID generation, validation, and insert.
-        # trg_cobertura_zona fires automatically inside the SP's INSERT.
         db.execute(
-            "CALL sp_cuidador_registrar_ronda(%s, %s, %s)",
-            (id_beacon, id_cuidador, rssi if rssi is not None else 0)
+            "CALL sp_ins_deteccion_beacon(%s, %s, %s, %s)",
+            (id_beacon, id_cuidador, rssi, gateway_id)
         )
-
-        # Fetch the id_deteccion just inserted and the zone name for the response
         row = db.one(
-            """SELECT db.id_deteccion, z.nombre_zona
-               FROM detecciones_beacon db
-               LEFT JOIN beacon_zona bz ON db.id_dispositivo = bz.id_dispositivo
-               LEFT JOIN zonas z        ON bz.id_zona = z.id_zona
-               WHERE db.id_dispositivo = %s
-               ORDER BY db.fecha_hora DESC
-               LIMIT 1""",
+            "SELECT id_deteccion FROM detecciones_beacon WHERE id_dispositivo=%s ORDER BY fecha_hora DESC LIMIT 1",
             [id_beacon]
         )
         return jsonify({
             "status": "ok",
             "ok": True,
-            "id_deteccion": row["id_deteccion"] if row else None,
-            "zone_name":    row["nombre_zona"]  if row else None,
+            "id_deteccion":  row["id_deteccion"] if row else None,
+            "caregiver_name": caregiver_name,
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 422

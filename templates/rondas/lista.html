@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Rondas Beacon{% endblock %}
+{% block page_title %}Rondas de cuidadores{% endblock %}
+{% block breadcrumb %}Inicio / Rondas Beacon{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+    <div>
+        <div class="section-title">Registro de rondas beacon</div>
+        <div class="section-sub">{{ rondas | length }} detección(es) más recientes</div>
+    </div>
+    <a href="{{ url_for('cuidador_ronda') }}" class="btn btn-primary" target="_blank">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+            <circle cx="12" cy="20" r="1"/>
+        </svg>
+        Iniciar ronda
+    </a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Fecha y hora</th>
+                    <th>Zona</th>
+                    <th>Beacon</th>
+                    <th>Cuidador</th>
+                    <th>RSSI</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if rondas %}
+                    {% for r in rondas %}
+                    <tr>
+                        <td style="color:#8892a4; font-weight:600;">{{ r.id_deteccion }}</td>
+                        <td style="font-variant-numeric:tabular-nums; font-weight:500;">
+                            {{ r.fecha_hora.strftime('%Y-%m-%d %H:%M:%S') if r.fecha_hora else '—' }}
+                        </td>
+                        <td style="font-weight:600;">
+                            {% if r.nombre_zona %}
+                                <span class="badge" style="background:#e0f2fe; color:#0369a1;">{{ r.nombre_zona }}</span>
+                            {% else %}
+                                <span style="color:#94a3b8;">Sin zona</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-family:monospace; font-size:12px; color:#475569;">{{ r.serial_beacon }}</td>
+                        <td>
+                            {% if r.nombre_cuidador == 'Anónimo' %}
+                                <span style="color:#94a3b8;">Anónimo</span>
+                            {% else %}
+                                {{ r.nombre_cuidador }}
+                            {% endif %}
+                        </td>
+                        <td style="font-variant-numeric:tabular-nums;">
+                            {% if r.rssi is not none %}
+                                <span style="color:#0E7490; font-weight:600;">{{ r.rssi }} dBm</span>
+                            {% else %}
+                                <span style="color:#94a3b8;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align:center; color:#8892a4; padding:36px;">
+                            No hay rondas registradas aún.
+                            <a href="{{ url_for('cuidador_ronda') }}" style="color:#0E7490; font-weight:600;">
+                                Iniciar primera ronda
+                            </a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
