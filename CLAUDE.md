@@ -26,7 +26,7 @@ Convención de nombres de SPs:
 Archivos SQL con SPs aplicados a la DB:
 - `RecetasProcedures.sql` — módulo recetas/NFC (10 SPs)
 - `BeaconProcedures.sql` — módulo rondas beacon (1 SP)
-- `AppProcedures.sql` — **pendiente de crear** — todos los demás SPs de app.py y pdf_report.py
+- `AppProcedures.sql` — primer batch (10 SPs DML: pacientes, enfermedades, contactos, kit GPS, turnos). ~27 DML calls aún pendientes de migrar.
 
 ## Running the App
 
@@ -40,6 +40,8 @@ Apply the schema from scratch:
 ```bash
 psql -U palermingoat -d alzheimer -f ProyectoFinalDDL.sql
 psql -U palermingoat -d alzheimer -f RecetasProcedures.sql
+psql -U palermingoat -d alzheimer -f BeaconProcedures.sql
+psql -U palermingoat -d alzheimer -f AppProcedures.sql
 psql -U palermingoat -d alzheimer -f TriggersDB.sql
 ```
 
@@ -108,15 +110,17 @@ Full integration plan is in `DEVICES.md`. **GPS is the central safety mechanism.
 
 | File | Status | Purpose |
 |------|--------|---------|
-| `ProyectoFinalDDL.sql` | Applied | Full schema + seed data (43 tables) |
+| `ProyectoFinalDDL.sql` | Applied | Full schema + seed data (45 tables) |
 | `RecetasProcedures.sql` | Applied | 10 stored procedures for receta/NFC module |
 | `BeaconProcedures.sql` | Applied | 1 stored procedure for caregiver beacon rounds |
+| `AppProcedures.sql` | Applied | 10 DML stored procedures — pacientes, enfermedades, contactos, kit GPS, turnos |
 | `TriggersDB.sql` | Applied | 3 DB triggers (cobertura zona, batería baja, zona exit) |
 | `ProcedimientosAlmacenados.sql` | Ref only | Academic convention rewrite of all SPs + 3 REFCURSOR SPs |
 | `finalqueries.sql` | Complete | Advanced analytical queries — **do not re-fix** |
 | `FinalStoredProcedures.sql` | Old ref | Earlier SP design — superseded by RecetasProcedures.sql |
 | `queries.sql` | Old ref | Earlier query drafts |
-| `Guia_Procedimientos_Almacenados.md` | Docs | Full usage guide for all 10 SPs — parameters, preconditions, error messages, SQL examples, lifecycle flow |
+| `AppProcedures_Guide.txt` | Docs | Usage guide for all 10 AppProcedures SPs — parameters, call syntax, what each does internally |
+| `Guia_Procedimientos_Almacenados.md` | Docs | Full usage guide for all 10 RecetasProcedures SPs — parameters, preconditions, error messages, SQL examples, lifecycle flow |
 
 ## Schema — ProyectoFinalDDL.sql
 
