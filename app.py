@@ -564,23 +564,7 @@ def pacientes_transferir_sede(id):
             flash("El paciente ya está asignado a esa sede.", "error")
             return redirect(url_for("pacientes_historial", id=id))
 
-        ops = []
-        if activos:
-            ops.append(("""
-                UPDATE sede_pacientes
-                SET fecha_salida = CURRENT_DATE,
-                    hora_salida  = CURRENT_TIME
-                WHERE id_paciente = %s AND fecha_salida IS NULL
-            """, (id,)))
-
-        ops.append(("""
-            INSERT INTO sede_pacientes
-                (id_sede_paciente, id_sede, id_paciente, fecha_ingreso, hora_ingreso)
-            SELECT (SELECT COALESCE(MAX(id_sede_paciente), 0) + 1 FROM sede_pacientes),
-                   %s, %s, CURRENT_DATE, CURRENT_TIME
-        """, (nueva_sede_id, id)))
-
-        db.execute_many(ops)
+        db.execute("CALL sp_transferir_sede(%s, %s)", (id, nueva_sede_id))
 
         sede_nombre = db.scalar(
             "SELECT nombre_sede FROM sedes WHERE id_sede = %s", (nueva_sede_id,)
@@ -946,10 +930,7 @@ def beacon_asignaciones():
 @admin_requerido
 def beacon_cerrar_asignacion(id):
     try:
-        db.execute(
-            "UPDATE asignacion_beacon SET fecha_fin = CURRENT_DATE WHERE id_asignacion = %s",
-            (id,)
-        )
+        db.execute("CALL sp_upd_cerrar_asignacion_beacon(%s)", (id,))
         flash("Asignación cerrada correctamente.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
@@ -1060,7 +1041,7 @@ def alertas_nueva():
 @admin_requerido
 def alertas_resolver(id):
     try:
-        db.execute("UPDATE alertas SET estatus = 'Atendida' WHERE id_alerta = %s", (id,))
+        db.execute("CALL sp_upd_alerta_atendida(%s)", (id,))
         flash("Alerta marcada como atendida.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
@@ -1071,7 +1052,7 @@ def alertas_resolver(id):
 @admin_requerido
 def alertas_eliminar(id):
     try:
-        db.execute("DELETE FROM alertas WHERE id_alerta = %s", (id,))
+        db.execute("CALL sp_del_alerta(%s)", (id,))
         flash("Alerta eliminada.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
@@ -1125,10 +1106,7 @@ def dispositivos_nuevo():
             tipo      = request.form["tipo"].strip()
             modelo    = request.form["modelo"].strip()
 
-            db.execute("""
-                INSERT INTO dispositivos (id_dispositivo, id_serial, tipo, modelo, estado)
-                VALUES (%s, %s, %s, %s, 'Activo')
-            """, (id_disp, id_serial, tipo, modelo))
+            db.execute("CALL sp_ins_dispositivo(%s, %s, %s, %s)", (id_disp, id_serial, tipo, modelo))
 
             flash("Dispositivo registrado correctamente.", "success")
             return redirect(url_for("dispositivos"))
@@ -1153,11 +1131,7 @@ def dispositivos_editar(id):
             modelo    = request.form["modelo"].strip()
             estado    = request.form["estado"].strip()
 
-            db.execute("""
-                UPDATE dispositivos
-                SET id_serial = %s, tipo = %s, modelo = %s, estado = %s
-                WHERE id_dispositivo = %s
-            """, (id_serial, tipo, modelo, estado, id))
+            db.execute("CALL sp_upd_dispositivo(%s, %s, %s, %s, %s)", (id, id_serial, tipo, modelo, estado))
 
             flash("Dispositivo actualizado correctamente.", "success")
             return redirect(url_for("dispositivos"))
@@ -1171,7 +1145,7 @@ def dispositivos_editar(id):
 @admin_requerido
 def dispositivos_eliminar(id):
     try:
-        db.execute("DELETE FROM dispositivos WHERE id_dispositivo = %s", (id,))
+        db.execute("CALL sp_del_dispositivo(%s)", (id,))
         flash("Dispositivo eliminado.", "success")
     except Exception as e:
         flash(f"Error al eliminar dispositivo: {e}", "error")
@@ -1230,10 +1204,7 @@ def zonas_nueva():
             longitud    = float(request.form["longitud_centro"])
             radio       = float(request.form["radio_metros"])
 
-            db.execute("""
-                INSERT INTO zonas (nombre_zona, latitud_centro, longitud_centro, radio_metros)
-                VALUES (%s, %s, %s, %s)
-            """, (nombre_zona, latitud, longitud, radio))
+            db.execute("CALL sp_ins_zona(%s, %s, %s, %s)", (nombre_zona, latitud, longitud, radio))
 
             flash("Zona segura registrada correctamente.", "success")
             return redirect(url_for("zonas"))
@@ -1259,12 +1230,7 @@ def zonas_editar(id):
             longitud    = float(request.form["longitud_centro"])
             radio       = float(request.form["radio_metros"])
 
-            db.execute("""
-                UPDATE zonas
-                SET nombre_zona = %s, latitud_centro = %s,
-                    longitud_centro = %s, radio_metros = %s
-                WHERE id_zona = %s
-            """, (nombre_zona, latitud, longitud, radio, id))
+            db.execute("CALL sp_upd_zona(%s, %s, %s, %s, %s)", (id, nombre_zona, latitud, longitud, radio))
 
             flash("Zona actualizada correctamente.", "success")
             return redirect(url_for("zonas"))
@@ -1279,7 +1245,7 @@ def zonas_editar(id):
 @admin_requerido
 def zonas_eliminar(id):
     try:
-        db.execute("DELETE FROM zonas WHERE id_zona = %s", (id,))
+        db.execute("CALL sp_del_zona(%s)", (id,))
         flash("Zona eliminada.", "success")
     except Exception as e:
         flash(f"Error al eliminar zona: {e}", "error")

@@ -146,6 +146,145 @@ $$;
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- SEDE TRANSFER
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_transferir_sede(
+    p_id_paciente INT,
+    p_nueva_sede_id INT
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_next_sp INT;
+BEGIN
+    UPDATE sede_pacientes
+    SET fecha_salida = CURRENT_DATE, hora_salida = CURRENT_TIME
+    WHERE id_paciente = p_id_paciente AND fecha_salida IS NULL;
+
+    SELECT COALESCE(MAX(id_sede_paciente), 0) + 1 INTO v_next_sp FROM sede_pacientes;
+
+    INSERT INTO sede_pacientes (id_sede_paciente, id_sede, id_paciente, fecha_ingreso, hora_ingreso)
+    VALUES (v_next_sp, p_nueva_sede_id, p_id_paciente, CURRENT_DATE, CURRENT_TIME);
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ALERTAS
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_upd_alerta_atendida(
+    p_id_alerta INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE alertas SET estatus = 'Atendida' WHERE id_alerta = p_id_alerta;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_del_alerta(
+    p_id_alerta INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    DELETE FROM alertas WHERE id_alerta = p_id_alerta;
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- DISPOSITIVOS
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_ins_dispositivo(
+    p_id_dispositivo INT,
+    p_id_serial VARCHAR,
+    p_tipo VARCHAR,
+    p_modelo VARCHAR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO dispositivos (id_dispositivo, id_serial, tipo, modelo, estado)
+    VALUES (p_id_dispositivo, p_id_serial, p_tipo, p_modelo, 'Activo');
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_upd_dispositivo(
+    p_id_dispositivo INT,
+    p_id_serial VARCHAR,
+    p_tipo VARCHAR,
+    p_modelo VARCHAR,
+    p_estado VARCHAR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE dispositivos
+    SET id_serial = p_id_serial, tipo = p_tipo, modelo = p_modelo, estado = p_estado
+    WHERE id_dispositivo = p_id_dispositivo;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_del_dispositivo(
+    p_id_dispositivo INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    DELETE FROM dispositivos WHERE id_dispositivo = p_id_dispositivo;
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ZONAS
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE sp_ins_zona(
+    p_nombre_zona VARCHAR,
+    p_latitud DOUBLE PRECISION,
+    p_longitud DOUBLE PRECISION,
+    p_radio_metros DOUBLE PRECISION
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO zonas (nombre_zona, latitud_centro, longitud_centro, radio_metros)
+    VALUES (p_nombre_zona, p_latitud, p_longitud, p_radio_metros);
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_upd_zona(
+    p_id_zona INT,
+    p_nombre_zona VARCHAR,
+    p_latitud DOUBLE PRECISION,
+    p_longitud DOUBLE PRECISION,
+    p_radio_metros DOUBLE PRECISION
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE zonas
+    SET nombre_zona = p_nombre_zona,
+        latitud_centro = p_latitud,
+        longitud_centro = p_longitud,
+        radio_metros = p_radio_metros
+    WHERE id_zona = p_id_zona;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_del_zona(
+    p_id_zona INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    DELETE FROM zonas WHERE id_zona = p_id_zona;
+END;
+$$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- BEACON — asignación y detección
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -175,6 +314,16 @@ BEGIN
 
     INSERT INTO detecciones_beacon (id_deteccion, id_dispositivo, id_cuidador, fecha_hora, rssi, id_gateway)
     VALUES (v_next_id, p_id_dispositivo, p_id_cuidador, NOW(), p_rssi, p_gateway_id);
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE sp_upd_cerrar_asignacion_beacon(
+    p_id_asignacion INT
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    UPDATE asignacion_beacon SET fecha_fin = CURRENT_DATE WHERE id_asignacion = p_id_asignacion;
 END;
 $$;
 
