@@ -141,6 +141,26 @@ END;
 $$;
 
 
+CREATE OR REPLACE PROCEDURE sp_kit_reasignar(
+    p_id_paciente INT,
+    p_id_dispositivo_nuevo INT
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_next_id INT;
+BEGIN
+    UPDATE asignacion_kit
+    SET fecha_fin = CURRENT_DATE
+    WHERE id_paciente = p_id_paciente AND fecha_fin IS NULL;
+
+    SELECT COALESCE(MAX(id_monitoreo), 0) + 1 INTO v_next_id FROM asignacion_kit;
+
+    INSERT INTO asignacion_kit (id_monitoreo, id_paciente, id_dispositivo_gps, fecha_entrega)
+    VALUES (v_next_id, p_id_paciente, p_id_dispositivo_nuevo, CURRENT_DATE);
+END;
+$$;
+
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- TURNOS
 -- ─────────────────────────────────────────────────────────────────────────────

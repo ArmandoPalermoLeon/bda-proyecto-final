@@ -647,6 +647,18 @@ def pacientes_asignar_kit(id):
     return redirect(url_for("pacientes_historial", id=id))
 
 
+@app.route("/pacientes/<int:id>/cambiar-kit", methods=["POST"])
+@admin_requerido
+def pacientes_cambiar_kit(id):
+    try:
+        id_gps = int(request.form["id_dispositivo_gps"])
+        db.execute("CALL sp_kit_reasignar(%s, %s)", (id, id_gps))
+        flash("Kit GPS reasignado correctamente.", "success")
+    except Exception as e:
+        flash(f"Error al reasignar kit GPS: {e}", "error")
+    return redirect(url_for("pacientes_historial", id=id))
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CUIDADORES
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2608,6 +2620,67 @@ def api_gps_lectura():
         return jsonify({"status": "error", "message": str(e)}), 422
 
 
+@app.route("/api/gps/osmand", methods=["GET", "POST"])
+def api_gps_osmand():
+    """GPS ingestion endpoint for mobile tracking apps (local dev, HTTP port 5003).
+    Supports two formats:
+      - Query/form params: ?id=<serial>&lat=<lat>&lon=<lon>&batt=<batt>&altitude=<alt>
+      - JSON body with location.coords (Traccar/BackgroundGeolocation format):
+          {"location": {"coords": {"latitude":..., "longitude":..., "altitude":..., "speed":...}}}
+        In this case pass ?id=<serial> in the URL.
+    'id' can be the device's id_serial (string) or id_dispositivo (number).
+    No auth required — only reachable on the local HTTP listener (port 5003).
+    """
+    # Device id always comes from the query string
+    device_id = request.args.get("id", "").strip()
+
+    # Try JSON body first (Traccar Client / BackgroundGeolocation format)
+    json_body = request.get_json(silent=True, force=True)
+    if json_body and "location" in json_body:
+        coords   = json_body["location"].get("coords", {})
+        lat      = coords.get("latitude")
+        lon      = coords.get("longitude")
+        altitude = coords.get("altitude")
+        raw_batt = json_body["location"].get("battery", {}).get("level", -1)
+        batt = max(0, min(100, int(raw_batt * 100))) if raw_batt >= 0 else None
+    else:
+        lat      = request.values.get("lat")
+        lon      = request.values.get("lon")
+        altitude = request.values.get("altitude")
+        batt     = request.values.get("batt") or request.values.get("battery")
+
+    if not device_id or lat is None or lon is None:
+        return f"Missing params — id={device_id!r} lat={lat!r} lon={lon!r}", 400
+
+    try:
+        # Resolve id_dispositivo — serial lookup first, then numeric id fallback
+        row = db.one(
+            "SELECT id_dispositivo FROM dispositivos WHERE id_serial = %s AND tipo = 'GPS'",
+            (device_id,)
+        )
+        if row:
+            id_dispositivo = row["id_dispositivo"]
+        else:
+            try:
+                id_dispositivo = int(device_id)
+            except ValueError:
+                return f"Device not found: {device_id}", 404
+
+        latitud       = float(lat)
+        longitud      = float(lon)
+        nivel_bateria = int(batt) if batt is not None else 100
+        altura        = float(altitude) if altitude else None
+
+        app.logger.debug("OsmAnd insert: id=%s lat=%s lon=%s batt=%s alt=%s",
+                         id_dispositivo, latitud, longitud, nivel_bateria, altura)
+        db.execute("CALL sp_ins_lectura_gps(%s, %s, %s, %s, %s)",
+                   (id_dispositivo, latitud, longitud, nivel_bateria, altura))
+        return "OK", 200
+    except Exception as e:
+        app.logger.error("OsmAnd SP error: %s", e)
+        return str(e), 422
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # STORED PROCEDURES GUIDE
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2685,9 +2758,20 @@ def test_nfc_read():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
+    import threading
+    from werkzeug.serving import make_server
+
     if not os.path.exists("cert.pem"):
         os.system(
             'openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem '
             '-days 365 -nodes -subj "/CN=localhost"'
         )
+
+    # Plain HTTP on 5003 for Traccar Client (avoids self-signed SSL rejection).
+    # Only start inside the reloader child process to avoid double-bind on port 5003.
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        http_srv = make_server("0.0.0.0", 5003, app)
+        threading.Thread(target=http_srv.serve_forever, daemon=True).start()
+        print("  * Traccar/OsmAnd HTTP listener on http://0.0.0.0:5003")
+
     app.run(debug=True, host="0.0.0.0", port=5002, ssl_context=("cert.pem", "key.pem"))
