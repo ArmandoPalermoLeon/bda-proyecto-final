@@ -944,13 +944,11 @@ def rondas_lista():
         SELECT db.id_deteccion,
                db.fecha_hora,
                db.rssi,
-               z.nombre_zona,
+               db.id_gateway,
                d.id_serial AS serial_beacon,
                COALESCE(e.nombre || ' ' || e.apellido_p, 'Anónimo') AS nombre_cuidador
         FROM detecciones_beacon db
         JOIN dispositivos d ON db.id_dispositivo = d.id_dispositivo
-        LEFT JOIN beacon_zona bz ON db.id_dispositivo = bz.id_dispositivo
-        LEFT JOIN zonas z ON bz.id_zona = z.id_zona
         LEFT JOIN cuidadores c ON db.id_cuidador = c.id_empleado
         LEFT JOIN empleados e ON c.id_empleado = e.id_empleado
         ORDER BY db.fecha_hora DESC
@@ -2308,15 +2306,16 @@ def portal_paciente(id):
         LIMIT 10
     """, (id,))
 
-    # ── Last caregiver round (beacon detections near patient's building) ──────
-    # NOTE: will migrate to MongoDB ble_events when beacon ingest is complete
+    # ── Last caregiver round — resolved via asignacion_beacon (caregiver-carried) ──
     ultima_ronda = db.scalar("""
         SELECT MAX(db2.fecha_hora)
         FROM detecciones_beacon db2
-        JOIN beacon_zona bz   ON db2.id_dispositivo = bz.id_dispositivo
-        JOIN sede_zonas sz    ON bz.id_zona          = sz.id_zona
-        JOIN sede_pacientes sp ON sz.id_sede         = sp.id_sede
-        WHERE sp.id_paciente = %s AND sp.fecha_salida IS NULL
+        JOIN asignacion_beacon ab ON ab.id_dispositivo = db2.id_dispositivo
+                                  AND ab.fecha_fin IS NULL
+        JOIN sede_empleados se    ON se.id_empleado = ab.id_cuidador
+        JOIN sede_pacientes sp    ON sp.id_sede = se.id_sede
+                                  AND sp.fecha_salida IS NULL
+        WHERE sp.id_paciente = %s
     """, (id,))
 
     return render_template(
@@ -2372,16 +2371,8 @@ def cuidador_ronda():
     manual zone check-in fallback.  No auth required for now.
     TODO: add caregiver login once /cuidador/login is implemented.
     """
-    # Load zones that have an active beacon assigned so the manual-mode buttons
-    # know which device ID to post.
-    zonas = db.query(
-        """SELECT z.id_zona, z.nombre_zona, d.id_dispositivo, d.id_serial
-           FROM zonas z
-           JOIN beacon_zona bz ON z.id_zona = bz.id_zona
-           JOIN dispositivos d  ON bz.id_dispositivo = d.id_dispositivo
-           WHERE d.estado = 'Activo'
-           ORDER BY z.nombre_zona"""
-    )
+    # beacon_zona (wall-mount approach) retired — beacons now caregiver-carried.
+    zonas = []
     return render_template("cuidador/ronda.html", zonas=zonas)
 
 

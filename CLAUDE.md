@@ -44,7 +44,10 @@ psql -U palermingoat -d alzheimer -f RecetasProcedures.sql
 psql -U palermingoat -d alzheimer -f BeaconProcedures.sql
 psql -U palermingoat -d alzheimer -f AppProcedures.sql
 psql -U palermingoat -d alzheimer -f TriggersDB.sql
+psql -U palermingoat -d alzheimer -f DisableTriggers.sql
 ```
+
+`DisableTriggers.sql` must be applied after `TriggersDB.sql` — it disables all 3 triggers without deleting them. To re-enable, apply `TriggersDB.sql` again (it recreates them in enabled state).
 
 Requires PostGIS installed (`brew install postgis`) — the DDL runs `CREATE EXTENSION IF NOT EXISTS postgis`.
 
@@ -127,7 +130,8 @@ Full integration plan is in `DEVICES.md`. **GPS is the central safety mechanism.
 | `BeaconProcedures.sql` | Applied | 1 SP legacy (sp_cuidador_registrar_ronda) |
 | `AppProcedures.sql` | Applied | 32 DML SPs — pacientes, cuidadores, enfermedades, contactos, kit GPS (incl. sp_kit_reasignar), turnos, asignacion_beacon, deteccion_beacon, alertas, farmacia, visitas, lecturas GPS |
 | `beacon_scanner.py` | Active | Python BLE scanner using bleak — run alongside Flask to detect caregiver beacons |
-| `TriggersDB.sql` | Applied | 3 DB triggers (cobertura zona, batería baja, zona exit) |
+| `TriggersDB.sql` | Applied | 3 DB triggers defined (cobertura zona, batería baja, zona exit) — all currently DISABLED via DisableTriggers.sql |
+| `DisableTriggers.sql` | Applied | Disables all 3 triggers; apply after TriggersDB.sql on fresh schema |
 | `ProcedimientosAlmacenados.sql` | Ref only | Academic convention rewrite of all SPs + 3 REFCURSOR SPs |
 | `finalqueries.sql` | Complete | Advanced analytical queries — **do not re-fix** |
 | `FinalStoredProcedures.sql` | Old ref | Earlier SP design — superseded by RecetasProcedures.sql |
@@ -192,13 +196,13 @@ All 10 SPs rewritten following `CREATE PROCEDURE` convention (no `OR REPLACE`, e
 
 ## DB Triggers — TriggersDB.sql
 
-Applied to live DB. Re-apply: `psql -U palermingoat -d alzheimer -f TriggersDB.sql`
+Defined in DB but **all currently DISABLED** via `DisableTriggers.sql`. Re-apply TriggersDB.sql then DisableTriggers.sql on a fresh schema. To re-enable individual triggers: `ALTER TABLE <table> ENABLE TRIGGER <name>;`
 
-| Trigger | Fires on | Logic |
-|---------|----------|-------|
-| `trg_cobertura_zona` | `AFTER INSERT ON detecciones_beacon` | Checks all zones with active `turno_cuidador` shifts; if any zone has no cuidador detection in the last 30 min → inserts `'Zona sin cobertura'` alert. Dedup window: 2 hours. |
-| `trg_bateria_baja_gps` | `AFTER INSERT ON lecturas_gps` | If `nivel_bateria ≤ 15`: resolves patient via `asignacion_kit`, inserts `'Batería Baja'` alert + `alerta_evento_origen` row with battery % context. Dedup window: 2 hours. |
-| `trg_zona_exit_gps` | `AFTER INSERT ON lecturas_gps` | PostGIS `ST_DWithin` check against all zones of the patient's active sede. If outside all zones → inserts `'Salida de Zona'` alert + `alerta_evento_origen` row with zone names and coordinates. Dedup window: 1 hour. |
+| Trigger | Fires on | Logic | Status |
+|---------|----------|-------|--------|
+| `trg_cobertura_zona` | `AFTER INSERT ON detecciones_beacon` | Checks zones with active `turno_cuidador`; if no beacon detection in 30 min → inserts `'Zona sin cobertura'` alert. **Broken** — uses `beacon_zona` (old wall-mount table, now empty). | DISABLED |
+| `trg_bateria_baja_gps` | `AFTER INSERT ON lecturas_gps` | If `nivel_bateria ≤ 15`: resolves patient via `asignacion_kit`, inserts `'Batería Baja'` alert + `alerta_evento_origen`. Dedup 2h. | DISABLED |
+| `trg_zona_exit_gps` | `AFTER INSERT ON lecturas_gps` | PostGIS `ST_DWithin` check vs. all zones of patient's sede. If outside all → inserts `'Salida de Zona'` alert + `alerta_evento_origen`. Dedup 1h. | DISABLED |
 
 ## Key Behaviors
 
