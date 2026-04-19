@@ -97,9 +97,11 @@ Vanilla JS only (`static/js/main.js`, 25 lines) — handles auto-dismiss alerts 
 
 | Role | Model | Technology | Carried by |
 |------|-------|-----------|------------|
-| GPS | PG12 GPS Tracker — Luejnbogty | GPRS/4G + GPS | Patient (hidden in clothing) |
+| GPS | Android phone running Traccar Client | Built-in GPS → HTTP push to port 5003 | Patient (or demo phone) |
 | Beacon | FeasyBeacon FSC-BP104D Waterproof | Bluetooth 5.1 BLE | **Caregiver** (clipped to uniform) |
 | NFC | NFC DESFire wristband | ISO 14443A (passive) | Patient (wristband, no battery) |
+
+> PG12 GPS Tracker (Luejnbogty) is no longer in use. Phone running Traccar Client replaces it — same `/api/gps/osmand` endpoint, same DB flow.
 
 Full integration plan is in `DEVICES.md`. **GPS is the central safety mechanism.**
 
@@ -294,7 +296,7 @@ UI is entirely in Spanish.
 ## Professor Demo Scenarios — Status
 
 ### Escenario 1 — Salida de zona y escalamiento ✅ COMPLETE
-- **Real PG12 GPS tracker working** — device pushes to `GET|POST /api/gps/osmand` on plain HTTP port 5003 via Traccar Client app on phone (confirmed working 2026-04-19). No polling loop needed; device pushes on its own schedule.
+- **Phone GPS working** — Android phone running Traccar Client pushes to `GET|POST /api/gps/osmand` on plain HTTP port 5003 (confirmed working 2026-04-19). PG12 hardware not in use. No polling loop needed — app pushes on its own schedule.
 - `POST /api/gps/lectura` (JSON) and `GET /sim/gps` remain available for demo without hardware
 - Alertas list shows `tipo_evento` badge + `regla_disparada` + full escalation chain for `'Salida de Zona'` and `'Botón SOS'` — priority-numbered contacts (red=1, amber=2, gray=3+) with parentesco and tap-to-call
 - Zonas list shows patients in zone + priority contact
