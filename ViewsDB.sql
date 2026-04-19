@@ -281,6 +281,213 @@ ORDER BY im.id_sede, stock_critico DESC, m.nombre_medicamento;
 
 
 -- -----------------------------------------------------------------------------
+-- 11. Suministros con farmacia proveedora, sede y medicamentos del pedido
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_suministros AS
+SELECT
+    su.id_suministro,
+    TO_CHAR(su.fecha_entrega, 'YYYY-MM-DD') AS fecha_entrega,
+    su.estado,
+    fp.nombre AS farmacia,
+    fp.id_farmacia,
+    s.id_sede,
+    s.nombre_sede,
+    COALESCE(STRING_AGG(m.nombre_medicamento, ' · ' ORDER BY m.nombre_medicamento), '—') AS medicamentos
+FROM suministros su
+JOIN farmacias_proveedoras fp ON fp.id_farmacia = su.id_farmacia
+JOIN sedes s ON s.id_sede = su.id_sede
+LEFT JOIN suministro_medicinas sm ON sm.id_suministro = su.id_suministro
+LEFT JOIN medicamentos m ON m.gtin = sm.gtin
+GROUP BY su.id_suministro, su.fecha_entrega, su.estado, fp.nombre, fp.id_farmacia, s.id_sede, s.nombre_sede
+ORDER BY su.id_suministro DESC;
+
+
+-- -----------------------------------------------------------------------------
+-- 12. Visitas con paciente, visitante y sede (filtrar por fecha en Python)
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_visitas AS
+SELECT
+    v.id_visita,
+    v.id_paciente,
+    TO_CHAR(v.fecha_entrada, 'YYYY-MM-DD') AS fecha_entrada,
+    v.hora_entrada,
+    v.fecha_salida,
+    v.hora_salida,
+    p.nombre || ' ' || p.apellido_p AS paciente,
+    vt.nombre || ' ' || vt.apellido_p AS visitante,
+    vt.relacion,
+    v.id_sede AS id_sucursal,
+    s.nombre_sede AS nombre_sucursal
+FROM visitas v
+JOIN pacientes p ON p.id_paciente = v.id_paciente
+JOIN visitantes vt ON vt.id_visitante = v.id_visitante
+JOIN sedes s ON s.id_sede = v.id_sede
+ORDER BY v.fecha_entrada DESC, v.hora_entrada DESC;
+
+
+-- -----------------------------------------------------------------------------
+-- 13. Entregas externas con paciente y visitante que las trajo
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_entregas_externas AS
+SELECT
+    ee.id_entrega,
+    ee.id_paciente,
+    ee.descripcion,
+    ee.estado,
+    TO_CHAR(ee.fecha_recepcion, 'YYYY-MM-DD') AS fecha,
+    ee.hora_recepcion,
+    p.nombre || ' ' || p.apellido_p AS paciente,
+    vt.nombre || ' ' || vt.apellido_p AS visitante
+FROM entregas_externas ee
+JOIN pacientes p ON p.id_paciente = ee.id_paciente
+JOIN visitantes vt ON vt.id_visitante = ee.id_visitante
+ORDER BY ee.fecha_recepcion DESC;
+
+
+-- -----------------------------------------------------------------------------
+-- 14. Medicamentos por receta con estadísticas de adherencia NFC (30 días)
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_receta_medicamentos AS
+SELECT
+    rm.id_detalle,
+    rm.id_receta,
+    rm.gtin,
+    m.nombre_medicamento,
+    rm.dosis,
+    rm.frecuencia_horas,
+    COUNT(ln.id_lectura_nfc) AS total_lecturas,
+    COUNT(ln.id_lectura_nfc) FILTER (WHERE ln.resultado = 'Exitosa') AS exitosas,
+    COUNT(ln.id_lectura_nfc) FILTER (
+        WHERE ln.resultado = 'Exitosa'
+          AND ln.fecha_hora >= CURRENT_DATE - INTERVAL '30 days'
+    ) AS exitosas_30d
+FROM receta_medicamentos rm
+JOIN medicamentos m ON m.gtin = rm.gtin
+LEFT JOIN receta_nfc rn ON rn.id_receta = rm.id_receta AND rn.fecha_fin_gestion IS NULL
+LEFT JOIN lecturas_nfc ln ON ln.id_receta = rm.id_receta AND ln.id_dispositivo = rn.id_dispositivo
+GROUP BY rm.id_detalle, rm.id_receta, rm.gtin, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas
+ORDER BY rm.id_receta, m.nombre_medicamento;
+
+
+-- -----------------------------------------------------------------------------
+-- 15. NFC activo por receta con serial del dispositivo
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_nfc_activo AS
+SELECT
+    rn.id_receta,
+    rn.id_dispositivo,
+    d.id_serial,
+    TO_CHAR(rn.fecha_inicio_gestion, 'DD/MM/YYYY') AS desde,
+    rn.fecha_fin_gestion
+FROM receta_nfc rn
+JOIN dispositivos d ON d.id_dispositivo = rn.id_dispositivo
+WHERE rn.fecha_fin_gestion IS NULL;
+
+
+-- -----------------------------------------------------------------------------
+-- 16. Asignaciones beacon activas con cuidador
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_asignacion_beacon AS
+SELECT
+    ab.id_asignacion,
+    ab.id_dispositivo,
+    d.id_serial AS serial_beacon,
+    d.modelo,
+    ab.id_cuidador,
+    e.nombre || ' ' || e.apellido_p AS nombre_cuidador,
+    e.telefono,
+    TO_CHAR(ab.fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio
+FROM asignacion_beacon ab
+JOIN dispositivos d ON d.id_dispositivo = ab.id_dispositivo
+JOIN empleados e ON e.id_empleado = ab.id_cuidador
+WHERE ab.fecha_fin IS NULL
+ORDER BY ab.id_asignacion;
+
+
+-- -----------------------------------------------------------------------------
+-- 17. Cuidadores actualmente asignados a cada paciente activo
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_cuidadores_asignados AS
+SELECT
+    ac.id_paciente,
+    p.nombre || ' ' || p.apellido_p AS nombre_paciente,
+    e.nombre AS nombre_cuidador,
+    e.apellido_p,
+    e.apellido_m,
+    e.telefono AS telefono_cuid,
+    TO_CHAR(ac.fecha_inicio, 'YYYY-MM-DD') AS fecha_asig_cuidador
+FROM asignacion_cuidador ac
+JOIN pacientes p ON p.id_paciente = ac.id_paciente
+JOIN cuidadores c ON c.id_empleado = ac.id_cuidador
+JOIN empleados e ON e.id_empleado = c.id_empleado
+WHERE ac.fecha_fin IS NULL
+ORDER BY ac.id_paciente;
+
+
+-- -----------------------------------------------------------------------------
+-- 18. Medicamentos activos por paciente desde recetas vigentes
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_medicamentos_por_paciente AS
+SELECT
+    r.id_paciente,
+    p.nombre || ' ' || p.apellido_p AS nombre_paciente,
+    r.id_receta,
+    m.nombre_medicamento AS medicamento,
+    rm.dosis,
+    rm.frecuencia_horas
+FROM recetas r
+JOIN receta_medicamentos rm ON rm.id_receta = r.id_receta
+JOIN medicamentos m ON m.gtin = rm.gtin
+JOIN pacientes p ON p.id_paciente = r.id_paciente
+WHERE r.estado = 'Activa'
+ORDER BY r.id_paciente, m.nombre_medicamento;
+
+
+-- -----------------------------------------------------------------------------
+-- 19. Contactos de emergencia con prioridad por paciente
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_contactos_emergencia AS
+SELECT
+    pc.id_paciente,
+    p.nombre || ' ' || p.apellido_p AS nombre_paciente,
+    pc.prioridad,
+    ce.id_contacto,
+    ce.nombre,
+    ce.apellido_p,
+    ce.nombre || ' ' || ce.apellido_p AS nombre_completo,
+    ce.telefono,
+    ce.relacion
+FROM paciente_contactos pc
+JOIN pacientes p ON p.id_paciente = pc.id_paciente
+JOIN contactos_emergencia ce ON ce.id_contacto = pc.id_contacto
+ORDER BY pc.id_paciente, pc.prioridad;
+
+
+-- -----------------------------------------------------------------------------
+-- 20. Últimas lecturas GPS por paciente activo (una fila por paciente)
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE VIEW v_ultima_lectura_gps AS
+SELECT DISTINCT ON (ak.id_paciente)
+    ak.id_paciente,
+    p.nombre || ' ' || p.apellido_p AS nombre_paciente,
+    lg.id_lectura,
+    lg.latitud,
+    lg.longitud,
+    lg.nivel_bateria,
+    lg.altura,
+    lg.fecha_hora AS ts,
+    TO_CHAR(lg.fecha_hora, 'YYYY-MM-DD') AS fecha,
+    TO_CHAR(lg.fecha_hora, 'HH24:MI') AS hora,
+    d.id_serial AS serial_gps
+FROM asignacion_kit ak
+JOIN pacientes p ON p.id_paciente = ak.id_paciente
+JOIN lecturas_gps lg ON lg.id_dispositivo = ak.id_dispositivo_gps
+JOIN dispositivos d ON d.id_dispositivo = ak.id_dispositivo_gps
+WHERE ak.fecha_fin IS NULL
+ORDER BY ak.id_paciente, lg.fecha_hora DESC;
+
+
+-- -----------------------------------------------------------------------------
 -- Confirmación
 -- -----------------------------------------------------------------------------
 DO $$
@@ -295,6 +502,16 @@ BEGIN
     RAISE NOTICE '✓ v_detecciones_beacon';
     RAISE NOTICE '✓ v_kit_gps_activo';
     RAISE NOTICE '✓ v_inventario_farmacia';
-    RAISE NOTICE '10 vistas aplicadas correctamente.';
+    RAISE NOTICE '✓ v_suministros';
+    RAISE NOTICE '✓ v_visitas';
+    RAISE NOTICE '✓ v_entregas_externas';
+    RAISE NOTICE '✓ v_receta_medicamentos';
+    RAISE NOTICE '✓ v_nfc_activo';
+    RAISE NOTICE '✓ v_asignacion_beacon';
+    RAISE NOTICE '✓ v_cuidadores_asignados';
+    RAISE NOTICE '✓ v_medicamentos_por_paciente';
+    RAISE NOTICE '✓ v_contactos_emergencia';
+    RAISE NOTICE '✓ v_ultima_lectura_gps';
+    RAISE NOTICE '20 vistas aplicadas correctamente.';
 END;
 $$;
