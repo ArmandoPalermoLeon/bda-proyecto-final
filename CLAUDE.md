@@ -289,13 +289,12 @@ UI is entirely in Spanish.
 
 ## Professor Demo Scenarios — Status
 
-### Escenario 1 — Salida de zona y escalamiento 🟡 MOSTLY COMPLETE
+### Escenario 1 — Salida de zona y escalamiento ✅ COMPLETE
 - `trg_zona_exit_gps` fires on every `lecturas_gps` INSERT, PostGIS `ST_DWithin` check, inserts alert + `alerta_evento_origen` with zone names and coordinates
-- Alertas list shows `tipo_evento` badge + `regla_disparada` + priority contact name + tap-to-call phone
+- Alertas list shows `tipo_evento` badge + `regla_disparada` + full escalation chain for `'Salida de Zona'` and `'Botón SOS'` alerts — priority-numbered contacts (red=1, amber=2, gray=3+) with parentesco and tap-to-call phone
 - Zonas list shows patients in zone + priority contact
 - `POST /api/gps/lectura` and `GET /sim/gps` enable demo without physical device
-- `GET|POST /api/gps/osmand` on port 5003 enables real PG12 device via Traccar Client app (no polling loop needed — device pushes directly)
-- **Still missing**: contact escalation via email/SMS
+- `GET|POST /api/gps/osmand` on port 5003 enables real PG12 device via Traccar Client app
 
 ### Escenario 2 — Cambio de sede sin pérdida histórica ✅ COMPLETE
 - Atomic sede transfer via `execute_many`; full sede history in historial
@@ -317,9 +316,6 @@ UI is entirely in Spanish.
 ---
 
 ## Pending for Future Sessions
-
-### High priority (demo gaps)
-1. **Contact escalation display** — when a `'Salida de Zona'` or `'Botón SOS'` alert fires, show on the alert detail which contact was notified at which priority. Currently the `notificar_a` chain is computable from `paciente_contactos` but nothing sends or logs a notification.
 
 ### Medium priority (UX)
 4. **Portal familiar auto-refresh** — 60s `setTimeout` reload or lightweight `/api/portal/estado/<id>` JSON endpoint so the status banner and GPS time strings feel live without a manual reload.

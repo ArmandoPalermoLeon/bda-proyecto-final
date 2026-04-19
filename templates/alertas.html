@@ -71,7 +71,34 @@
                             {% endif %}
                         </td>
                         <td style="font-size:11px;">
-                            {% if a.contacto_prioritario %}
+                            {% set cadena = contactos_por_paciente.get(a.id_paciente, []) %}
+                            {% if a.tipo_alerta in ('Salida de Zona', 'Botón SOS') and cadena %}
+                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                {% for c in cadena %}
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <span style="min-width:16px; height:16px; border-radius:50%;
+                                                 background:{% if loop.first %}#EF4444{% elif loop.index == 2 %}#F59E0B{% else %}#94A3B8{% endif %};
+                                                 color:#fff; font-size:9px; font-weight:700;
+                                                 display:flex; align-items:center; justify-content:center;">
+                                        {{ c.prioridad }}
+                                    </span>
+                                    <div style="display:flex; flex-direction:column; gap:0;">
+                                        <span style="font-weight:{% if loop.first %}700{% else %}500{% endif %}; color:#0F172A;">
+                                            {{ c.nombre }}
+                                        </span>
+                                        {% if c.parentesco %}
+                                        <span style="color:#94A3B8; font-size:10px;">{{ c.parentesco }}</span>
+                                        {% endif %}
+                                        {% if c.telefono %}
+                                        <a href="tel:{{ c.telefono }}" style="color:#0E7490; text-decoration:none;">
+                                            {{ c.telefono }}
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% elif a.contacto_prioritario %}
                             <div style="display:flex; flex-direction:column; gap:1px;">
                                 <span style="font-weight:600; color:#0F172A;">{{ a.contacto_prioritario }}</span>
                                 {% if a.telefono_contacto %}

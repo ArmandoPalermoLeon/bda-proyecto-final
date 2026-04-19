@@ -967,7 +967,7 @@ def rondas_lista():
 @admin_requerido
 def alertas():
     alertas_list = db.query("""
-        SELECT a.id_alerta, a.tipo_alerta, a.estatus, a.fecha_hora,
+        SELECT a.id_alerta, a.id_paciente, a.tipo_alerta, a.estatus, a.fecha_hora,
                COALESCE(
                    p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m,
                    '— Zona: ' || z.nombre_zona,
@@ -976,7 +976,7 @@ def alertas():
                COALESCE(s.nombre_sede, sz.nombre_sede, '—') AS nombre_sucursal,
                aeo.tipo_evento,
                aeo.regla_disparada,
-               -- Priority contact for this patient
+               -- Top-priority contact (kept for non-critical alert types)
                ce.nombre || ' ' || ce.apellido_p AS contacto_prioritario,
                ce.telefono AS telefono_contacto
         FROM alertas a
@@ -1000,7 +1000,25 @@ def alertas():
         LEFT JOIN contactos_emergencia ce ON ce.id_contacto = pc_top.id_contacto
         ORDER BY a.fecha_hora DESC
     """)
-    return render_template("alertas.html", alertas=alertas_list)
+
+    # Build full escalation chain for critical alerts (Salida de Zona, Botón SOS)
+    patient_ids = list({a["id_paciente"] for a in alertas_list if a.get("id_paciente")})
+    contactos_por_paciente = {}
+    if patient_ids:
+        rows = db.query("""
+            SELECT pc.id_paciente, pc.prioridad,
+                   ce.nombre || ' ' || ce.apellido_p AS nombre,
+                   ce.telefono, ce.parentesco
+            FROM paciente_contactos pc
+            JOIN contactos_emergencia ce ON ce.id_contacto = pc.id_contacto
+            WHERE pc.id_paciente = ANY(%s)
+            ORDER BY pc.id_paciente, pc.prioridad
+        """, (patient_ids,))
+        for row in rows:
+            contactos_por_paciente.setdefault(row["id_paciente"], []).append(row)
+
+    return render_template("alertas.html", alertas=alertas_list,
+                           contactos_por_paciente=contactos_por_paciente)
 
 
 @app.route("/alertas/nueva", methods=["GET", "POST"])
