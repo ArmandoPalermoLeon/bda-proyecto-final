@@ -1453,7 +1453,7 @@ BEGIN
     OPEN io_resultados FOR
         SELECT * FROM v_alertas_historial_30d
         WHERE id_paciente = p_id_paciente
-        ORDER BY fecha_hora DESC;
+        ORDER BY fecha DESC, hora DESC;
 END;
 $$;
 
