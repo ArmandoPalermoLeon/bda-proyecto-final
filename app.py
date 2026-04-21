@@ -2836,6 +2836,9 @@ def api_gps_osmand():
     'id' can be the device's id_serial (string) or id_dispositivo (number).
     No auth required — only reachable on the local HTTP listener (port 5003).
     """
+    # Debug — log exactly what Traccar sends
+    print(f"[GPS] args={dict(request.args)} form={dict(request.form)} json={request.get_data(as_text=True)[:200]}")
+
     # Device id always comes from the query string
     device_id = request.args.get("id", "").strip()
 
