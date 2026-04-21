@@ -1718,7 +1718,18 @@ END;
 $$;
 
 
--- 137 — next ID for suministros
+-- 137 — next ID for empleados (used when creating cuidadores)
+CREATE OR REPLACE PROCEDURE sp_sel_next_id_empleado(
+    INOUT io_resultados REFCURSOR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    OPEN io_resultados FOR
+        SELECT COALESCE(MAX(id_empleado), 0) + 1 AS next_id FROM empleados;
+END;
+$$;
+
+-- 138 — next ID for suministros
 CREATE OR REPLACE PROCEDURE sp_sel_next_id_suministro(
     INOUT io_resultados REFCURSOR
 )
@@ -1734,7 +1745,7 @@ $$;
 -- =============================================================================
 DO $$
 BEGIN
-    RAISE NOTICE '137 SPs de consulta SELECT aplicados correctamente.';
+    RAISE NOTICE '138 SPs de consulta SELECT aplicados correctamente.';
     RAISE NOTICE 'Requiere ViewsDB.sql aplicado previamente.';
 END;
 $$;

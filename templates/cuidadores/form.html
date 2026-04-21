@@ -26,19 +26,6 @@
             <form method="POST"
                   action="{{ url_for('cuidadores_editar', id=cuidador.id_cuidador) if cuidador else url_for('cuidadores_nuevo') }}">
 
-                <!-- ID del cuidador (solo en creación) -->
-                {% if not cuidador %}
-                <div class="form-group">
-                    <label class="form-label" for="id_cuidador">ID del cuidador</label>
-                    <input type="number"
-                           id="id_cuidador"
-                           name="id_cuidador"
-                           class="form-control"
-                           placeholder="Ej. 4"
-                           required>
-                </div>
-                {% endif %}
-
                 <!-- Nombre y apellidos -->
                 <div class="form-grid">
                     <div class="form-group">

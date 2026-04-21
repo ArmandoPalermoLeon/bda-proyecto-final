@@ -463,7 +463,7 @@ def cuidadores_lista():
 def cuidadores_nuevo():
     if request.method == "POST":
         try:
-            id_cuid    = int(request.form["id_cuidador"])
+            id_cuid    = db.one_sp("sp_sel_next_id_empleado")["next_id"]
             nombre     = request.form["nombre_cuidador"].strip()
             apellido_p = request.form["apellido_p_cuid"].strip()
             apellido_m = request.form["apellido_m_cuid"].strip()
