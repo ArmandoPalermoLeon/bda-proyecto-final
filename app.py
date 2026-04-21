@@ -2966,11 +2966,9 @@ if __name__ == "__main__":
     import threading
     from werkzeug.serving import make_server
 
-    # Plain HTTP on 5003 for Traccar Client (avoids self-signed SSL rejection).
-    # Only start inside the reloader child process to avoid double-bind on port 5003.
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        http_srv = make_server("0.0.0.0", 5003, app)
-        threading.Thread(target=http_srv.serve_forever, daemon=True).start()
-        print("  * Traccar/OsmAnd HTTP listener on http://0.0.0.0:5003")
+    # Traccar/OsmAnd plain HTTP listener on 5003
+    http_srv = make_server("0.0.0.0", 5003, app)
+    threading.Thread(target=http_srv.serve_forever, daemon=True).start()
+    print("  * Traccar/OsmAnd HTTP listener on http://0.0.0.0:5003")
 
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=False, host="0.0.0.0", port=5000)
