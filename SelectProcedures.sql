@@ -959,7 +959,7 @@ BEGIN
     OPEN io_resultados FOR
         SELECT * FROM v_visitas_historial
         WHERE id_paciente = p_id_paciente
-        ORDER BY fecha_visita DESC;
+        ORDER BY fecha_entrada DESC;
 END;
 $$;
 
