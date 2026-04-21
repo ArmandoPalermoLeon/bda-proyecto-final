@@ -542,6 +542,18 @@ def pacientes_historial(id):
         ORDER BY d.id_serial
     """)
 
+    lecturas_gps = db.query("""
+        SELECT TO_CHAR(lg.fecha_hora, 'YYYY-MM-DD') AS fecha,
+               TO_CHAR(lg.fecha_hora, 'HH24:MI:SS') AS hora,
+               lg.latitud, lg.longitud, lg.altitud,
+               lg.nivel_bateria
+        FROM lecturas_gps lg
+        JOIN asignacion_kit ak ON lg.id_dispositivo = ak.id_dispositivo_gps
+        WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
+        ORDER BY lg.fecha_hora DESC
+        LIMIT 50
+    """, (id,))
+
     return render_template(
         "pacientes/historial.html",
         paciente=paciente,
@@ -559,6 +571,7 @@ def pacientes_historial(id):
         alertas_paciente=alertas_paciente,
         visitas=visitas,
         entregas=entregas,
+        lecturas_gps=lecturas_gps,
     )
 
 
@@ -2953,12 +2966,6 @@ if __name__ == "__main__":
     import threading
     from werkzeug.serving import make_server
 
-    if not os.path.exists("cert.pem"):
-        os.system(
-            'openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem '
-            '-days 365 -nodes -subj "/CN=localhost"'
-        )
-
     # Plain HTTP on 5003 for Traccar Client (avoids self-signed SSL rejection).
     # Only start inside the reloader child process to avoid double-bind on port 5003.
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
@@ -2966,4 +2973,4 @@ if __name__ == "__main__":
         threading.Thread(target=http_srv.serve_forever, daemon=True).start()
         print("  * Traccar/OsmAnd HTTP listener on http://0.0.0.0:5003")
 
-    app.run(debug=True, host="0.0.0.0", port=5002, ssl_context=("cert.pem", "key.pem"))
+    app.run(debug=True, host="0.0.0.0", port=5000)
