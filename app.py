@@ -545,7 +545,7 @@ def pacientes_historial(id):
     lecturas_gps = db.query("""
         SELECT TO_CHAR(lg.fecha_hora, 'YYYY-MM-DD') AS fecha,
                TO_CHAR(lg.fecha_hora, 'HH24:MI:SS') AS hora,
-               lg.latitud, lg.longitud, lg.altitud,
+               lg.latitud, lg.longitud,
                lg.nivel_bateria
         FROM lecturas_gps lg
         JOIN asignacion_kit ak ON lg.id_dispositivo = ak.id_dispositivo_gps

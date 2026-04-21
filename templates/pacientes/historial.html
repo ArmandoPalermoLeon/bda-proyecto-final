@@ -553,7 +553,6 @@
                         <th>Hora</th>
                         <th>Latitud</th>
                         <th>Longitud</th>
-                        <th>Altitud</th>
                         <th>Batería</th>
                     </tr>
                 </thead>
@@ -564,7 +563,6 @@
                         <td style="font-size:12px; font-weight:600; font-variant-numeric:tabular-nums;">{{ l.hora }}</td>
                         <td style="font-size:12px; font-variant-numeric:tabular-nums; color:#475569;">{{ "%.6f"|format(l.latitud) }}</td>
                         <td style="font-size:12px; font-variant-numeric:tabular-nums; color:#475569;">{{ "%.6f"|format(l.longitud) }}</td>
-                        <td style="font-size:12px; color:#94A3B8;">{{ l.altitud | default('—', true) }}</td>
                         <td>
                             {% if l.nivel_bateria is not none %}
                             <span style="font-size:12px; font-weight:700;
