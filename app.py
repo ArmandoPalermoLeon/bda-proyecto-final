@@ -20,17 +20,7 @@ def inject_alertas_criticas():
     criticas = []
     if session.get("admin") or session.get("medico"):
         try:
-            rows = db.query("""
-                SELECT a.id_alerta,
-                       COALESCE(p.nombre || ' ' || p.apellido_p, 'Zona') AS nombre_paciente,
-                       a.fecha_hora,
-                       a.tipo_alerta
-                FROM alertas a
-                LEFT JOIN pacientes p ON a.id_paciente = p.id_paciente
-                WHERE a.estatus = 'Activa'
-                  AND a.tipo_alerta IN ('Salida de Zona', 'Botón SOS', 'Caída')
-                ORDER BY a.fecha_hora DESC
-            """)
+            rows = db.query_sp("sp_sel_alertas_banner")
             now = datetime.now()
             for r in rows:
                 delta = now - r["fecha_hora"]
@@ -131,24 +121,15 @@ def logout():
 @app.route("/dashboard")
 @admin_requerido
 def dashboard():
-    stats = {
-        "pacientes":      db.scalar("SELECT COUNT(*) FROM pacientes WHERE id_estado != 3"),
-        "cuidadores":     db.scalar("SELECT COUNT(*) FROM cuidadores"),
-        "dispositivos":   db.scalar("SELECT COUNT(*) FROM dispositivos WHERE estado = 'Activo'"),
-        "alertas_activas": db.scalar("SELECT COUNT(*) FROM alertas WHERE estatus = 'Activa'"),
-    }
+    stats = dict(db.one_sp("sp_sel_dashboard_stats"))
 
-    sedes = db.query("""
-        SELECT id_sede,
-               nombre_sede,
-               calle || ' ' || numero || ', ' || municipio AS direccion
-        FROM sedes
-        ORDER BY id_sede
-    """)
+    sedes = db.query_sp("sp_sel_sedes")
+    sede_stats = {r["id_sede"]: r for r in db.query_sp("sp_sel_stats_por_sede")}
 
     stats_por_sede = []
     for s in sedes:
         sid = s["id_sede"]
+        ss = sede_stats.get(sid, {})
         stats_por_sede.append({
             "sucursal": {
                 "id_sucursal": sid,
@@ -157,98 +138,24 @@ def dashboard():
                 "direccion": s["direccion"],
                 "director":  "",
             },
-            "pacientes": db.scalar("""
-                SELECT COUNT(*) FROM pacientes p
-                JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-                WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND p.id_estado != 3
-            """, (sid,)) or 0,
-            "cuidadores": db.scalar("""
-                SELECT COUNT(DISTINCT se.id_empleado)
-                FROM sede_empleados se
-                JOIN cuidadores c ON se.id_empleado = c.id_empleado
-                WHERE se.id_sede = %s AND se.fecha_salida IS NULL
-            """, (sid,)) or 0,
-            "dispositivos": db.scalar("""
-                SELECT COUNT(DISTINCT ak.id_dispositivo_gps)
-                FROM asignacion_kit ak
-                JOIN sede_pacientes sp ON ak.id_paciente = sp.id_paciente
-                WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL
-                  AND ak.fecha_fin IS NULL
-            """, (sid,)) or 0,
-            "alertas_activas": db.scalar("""
-                SELECT COUNT(*) FROM alertas a
-                JOIN sede_pacientes sp ON a.id_paciente = sp.id_paciente
-                WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND a.estatus = 'Activa'
-            """, (sid,)) or 0,
+            "pacientes":       ss.get("total_pacientes", 0),
+            "cuidadores":      ss.get("total_cuidadores", 0),
+            "dispositivos":    ss.get("total_dispositivos", 0),
+            "alertas_activas": ss.get("alertas_activas", 0),
         })
 
-    alertas = db.query("""
-        SELECT a.tipo_alerta,
-               a.estatus    AS estatus_alerta,
-               a.fecha_hora AS fecha_hora_lectura,
-               p.nombre || ' ' || p.apellido_p AS paciente,
-               sp.id_sede   AS id_sucursal,
-               s.nombre_sede AS nombre_sucursal
-        FROM alertas a
-        JOIN pacientes p ON a.id_paciente = p.id_paciente
-        LEFT JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-                                   AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s ON sp.id_sede = s.id_sede
-        ORDER BY a.fecha_hora DESC
-        LIMIT 10
-    """)
-
-    medicamentos_criticos = db.query("""
-        SELECT im.GTIN, im.stock_actual, im.stock_minimo,
-               m.nombre_medicamento, s.nombre_sede
-        FROM inventario_medicinas im
-        JOIN medicamentos m ON im.GTIN = m.GTIN
-        JOIN sedes s        ON im.id_sede = s.id_sede
-        WHERE im.stock_actual < im.stock_minimo
-    """)
-
-    suministros_pendientes = db.query("""
-        SELECT su.id_suministro, su.fecha_entrega, su.estado,
-               fp.nombre AS farmacia, s.nombre_sede
-        FROM suministros su
-        JOIN farmacias_proveedoras fp ON su.id_farmacia = fp.id_farmacia
-        JOIN sedes s                  ON su.id_sede     = s.id_sede
-        WHERE su.estado = 'Pendiente'
-        ORDER BY su.fecha_entrega
-    """)
-
-    visitas_hoy = db.query("""
-        SELECT v.id_visita, v.fecha_entrada, v.hora_entrada,
-               p.nombre || ' ' || p.apellido_p AS paciente,
-               vt.nombre || ' ' || vt.apellido_p AS visitante,
-               s.nombre_sede AS nombre_sucursal
-        FROM visitas v
-        JOIN pacientes p  ON v.id_paciente  = p.id_paciente
-        JOIN visitantes vt ON v.id_visitante = vt.id_visitante
-        JOIN sedes s       ON v.id_sede      = s.id_sede
-        WHERE v.fecha_entrada = CURRENT_DATE
-        ORDER BY v.hora_entrada DESC
-    """)
+    alertas               = db.query_sp("sp_sel_alertas_recientes")
+    medicamentos_criticos = db.query_sp("sp_sel_medicamentos_criticos")
+    suministros_pendientes = db.query_sp("sp_sel_suministros_pendientes")
+    visitas_hoy           = db.query_sp("sp_sel_visitas_hoy")
 
     # ── Chart data ───────────────────────────────────────────────────────────
-    alertas_por_tipo = db.query("""
-        SELECT tipo_alerta, COUNT(*) AS total
-        FROM alertas
-        GROUP BY tipo_alerta
-        ORDER BY total DESC
-    """)
+    alertas_por_tipo = db.query_sp("sp_sel_resumen_alertas_por_tipo")
 
-    alertas_por_dia = db.query("""
-        SELECT TO_CHAR(fecha_hora::date, 'DD/MM') AS dia, COUNT(*) AS total
-        FROM alertas
-        WHERE fecha_hora >= CURRENT_DATE - INTERVAL '13 days'
-        GROUP BY fecha_hora::date
-        ORDER BY fecha_hora::date
-    """)
-    # Fill in missing days with 0 (build full 14-day series)
+    alertas_por_dia = db.query_sp("sp_sel_alertas_por_dia_14d")
     from datetime import timedelta
     hoy = date.today()
-    dia_map = {r["dia"]: int(r["total"]) for r in alertas_por_dia}
+    dia_map = {r["dia_label"]: int(r["total"]) for r in alertas_por_dia}
     alertas_dias_labels = []
     alertas_dias_valores = []
     for i in range(13, -1, -1):
@@ -257,13 +164,7 @@ def dashboard():
         alertas_dias_labels.append(label)
         alertas_dias_valores.append(dia_map.get(label, 0))
 
-    stock_farmacia = db.query("""
-        SELECT m.nombre_medicamento, im.stock_actual, im.stock_minimo, s.nombre_sede
-        FROM inventario_medicinas im
-        JOIN medicamentos m ON im.GTIN = m.GTIN
-        JOIN sedes s        ON im.id_sede = s.id_sede
-        ORDER BY s.nombre_sede, m.nombre_medicamento
-    """)
+    stock_farmacia = db.query_sp("sp_sel_stock_farmacia_completo")
 
     return render_template(
         "dashboard.html",
@@ -288,33 +189,16 @@ def dashboard():
 @app.route("/pacientes")
 @admin_requerido
 def pacientes_lista():
-    pacientes = db.query("""
-        SELECT p.id_paciente,
-               p.nombre      AS nombre_paciente,
-               p.apellido_p  AS apellido_p_pac,
-               p.apellido_m  AS apellido_m_pac,
-               p.fecha_nacimiento,
-               p.id_estado,
-               ep.desc_estado,
-               sp.id_sede    AS id_sucursal,
-               s.nombre_sede AS nombre_sucursal
-        FROM pacientes p
-        JOIN estados_paciente ep ON p.id_estado = ep.id_estado
-        LEFT JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-                                   AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s ON sp.id_sede = s.id_sede
-        WHERE p.id_estado != 3
-        ORDER BY p.id_paciente
-    """)
-    sedes = db.query("SELECT * FROM sedes ORDER BY id_sede")
+    pacientes = db.query_sp("sp_sel_pacientes_activos")
+    sedes     = db.query_sp("sp_sel_sedes")
     return render_template("pacientes/list.html", pacientes=pacientes, sucursales=sedes)
 
 
 @app.route("/pacientes/nuevo", methods=["GET", "POST"])
 @admin_requerido
 def pacientes_nuevo():
-    estados = db.query("SELECT * FROM estados_paciente ORDER BY id_estado")
-    sedes   = db.query("SELECT id_sede, nombre_sede FROM sedes ORDER BY nombre_sede")
+    estados = db.query_sp("sp_sel_estados_paciente")
+    sedes   = db.query_sp("sp_sel_sedes")
     if request.method == "POST":
         try:
             id_pac     = int(request.form["id_paciente"])
@@ -339,19 +223,8 @@ def pacientes_nuevo():
 @app.route("/pacientes/editar/<int:id>", methods=["GET", "POST"])
 @admin_requerido
 def pacientes_editar(id):
-    estados = db.query("SELECT * FROM estados_paciente ORDER BY id_estado")
-    paciente = db.one("""
-        SELECT p.id_paciente,
-               p.nombre     AS nombre_paciente,
-               p.apellido_p AS apellido_p_pac,
-               p.apellido_m AS apellido_m_pac,
-               p.fecha_nacimiento,
-               p.id_estado,
-               ep.desc_estado
-        FROM pacientes p
-        JOIN estados_paciente ep ON p.id_estado = ep.id_estado
-        WHERE p.id_paciente = %s
-    """, (id,))
+    estados  = db.query_sp("sp_sel_estados_paciente")
+    paciente = db.one_sp("sp_sel_paciente_por_id", (id,))
 
     if not paciente:
         flash("Paciente no encontrado.", "error")
@@ -390,18 +263,7 @@ def pacientes_eliminar(id):
 @app.route("/pacientes/historial/<int:id>")
 @admin_requerido
 def pacientes_historial(id):
-    paciente = db.one("""
-        SELECT p.id_paciente,
-               p.nombre     AS nombre_paciente,
-               p.apellido_p AS apellido_p_pac,
-               p.apellido_m AS apellido_m_pac,
-               p.fecha_nacimiento,
-               p.id_estado,
-               ep.desc_estado
-        FROM pacientes p
-        JOIN estados_paciente ep ON p.id_estado = ep.id_estado
-        WHERE p.id_paciente = %s
-    """, (id,))
+    paciente = db.one_sp("sp_sel_paciente_por_id", (id,))
 
     if not paciente:
         flash("Paciente no encontrado.", "error")
@@ -409,150 +271,29 @@ def pacientes_historial(id):
 
     estado = {"desc_estado": paciente["desc_estado"]}
 
-    enfermedades = db.query("""
-        SELECT e.nombre_enfermedad,
-               TO_CHAR(te.fecha_diag, 'YYYY-MM-DD') AS fecha_diag
-        FROM tiene_enfermedad te
-        JOIN enfermedades e ON te.id_enfermedad = e.id_enfermedad
-        WHERE te.id_paciente = %s
-    """, (id,))
-
-    cuidadores = db.query("""
-        SELECT e.nombre     AS nombre_cuidador,
-               e.apellido_p AS apellido_p_cuid,
-               e.apellido_m AS apellido_m_cuid,
-               e.telefono   AS telefono_cuid,
-               TO_CHAR(ac.fecha_inicio, 'YYYY-MM-DD') AS fecha_asig_cuidador
-        FROM asignacion_cuidador ac
-        JOIN cuidadores c ON ac.id_cuidador = c.id_empleado
-        JOIN empleados e  ON c.id_empleado  = e.id_empleado
-        WHERE ac.id_paciente = %s AND ac.fecha_fin IS NULL
-    """, (id,))
-
-    contactos = db.query("""
-        SELECT ce.nombre, ce.relacion, ce.telefono, pc.prioridad
-        FROM paciente_contactos pc
-        JOIN contactos_emergencia ce ON pc.id_contacto = ce.id_contacto
-        WHERE pc.id_paciente = %s
-        ORDER BY pc.prioridad
-    """, (id,))
-
-    kit = db.one("""
-        SELECT ak.id_monitoreo,
-               gps.id_serial  AS codigo_gps,
-               TO_CHAR(ak.fecha_entrega, 'YYYY-MM-DD') AS fecha_entrega
-        FROM asignacion_kit ak
-        JOIN dispositivos gps ON ak.id_dispositivo_gps = gps.id_dispositivo
-        WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
-        LIMIT 1
-    """, (id,))
-
-    historial_sedes = db.query("""
-        SELECT sp.id_sede_paciente,
-               sp.id_sede,
-               s.nombre_sede,
-               TO_CHAR(sp.fecha_ingreso, 'YYYY-MM-DD') AS fecha_ingreso,
-               sp.hora_ingreso,
-               TO_CHAR(sp.fecha_salida,  'YYYY-MM-DD') AS fecha_salida,
-               sp.hora_salida
-        FROM sede_pacientes sp
-        JOIN sedes s ON sp.id_sede = s.id_sede
-        WHERE sp.id_paciente = %s
-        ORDER BY sp.fecha_ingreso DESC
-    """, (id,))
+    enfermedades          = db.query_sp("sp_sel_enfermedades_por_paciente", (id,))
+    cuidadores            = db.query_sp("sp_sel_cuidadores_por_paciente", (id,))
+    contactos             = db.query_sp("sp_sel_contactos_por_paciente", (id,))
+    kit                   = db.one_sp("sp_sel_kit_por_paciente", (id,))
+    historial_sedes       = db.query_sp("sp_sel_historial_sedes_por_paciente", (id,))
+    alertas_paciente      = db.query_sp("sp_sel_alertas_por_paciente", (id,))
+    visitas               = db.query_sp("sp_sel_visitas_por_paciente", (id,))
+    entregas              = db.query_sp("sp_sel_entregas_por_paciente", (id,))
+    nfc_asignacion        = db.one_sp("sp_sel_nfc_asignacion_por_paciente", (id,))
+    nfc_disponibles       = db.query_sp("sp_sel_nfc_disponibles")
+    enfermedades_disponibles = db.query_sp("sp_sel_enfermedades_disponibles", (id,))
+    gps_disponibles       = db.query_sp("sp_sel_gps_disponibles")
 
     sede_actual_id = next(
         (r["id_sede"] for r in historial_sedes if r["fecha_salida"] is None),
         None
     )
+    sedes_disponibles = [
+        s for s in db.query_sp("sp_sel_sedes")
+        if s["id_sede"] != (sede_actual_id or 0)
+    ]
 
-    sedes_disponibles = db.query("""
-        SELECT id_sede, nombre_sede FROM sedes
-        WHERE id_sede != %s
-        ORDER BY nombre_sede
-    """, (sede_actual_id or 0,))
-
-    alertas_paciente = db.query("""
-        SELECT a.id_alerta, a.tipo_alerta, a.estatus,
-               TO_CHAR(a.fecha_hora, 'YYYY-MM-DD') AS fecha,
-               TO_CHAR(a.fecha_hora, 'HH24:MI')    AS hora
-        FROM alertas a
-        WHERE a.id_paciente = %s
-        ORDER BY a.fecha_hora DESC
-    """, (id,))
-
-    visitas = db.query("""
-        SELECT v.id_visita,
-               TO_CHAR(v.fecha_entrada, 'YYYY-MM-DD') AS fecha_entrada,
-               v.hora_entrada, v.fecha_salida, v.hora_salida,
-               vt.nombre || ' ' || vt.apellido_p AS visitante,
-               vt.relacion
-        FROM visitas v
-        JOIN visitantes vt ON v.id_visitante = vt.id_visitante
-        WHERE v.id_paciente = %s
-        ORDER BY v.fecha_entrada DESC
-    """, (id,))
-
-    entregas = db.query("""
-        SELECT ee.id_entrega, ee.descripcion, ee.estado,
-               TO_CHAR(ee.fecha_recepcion, 'YYYY-MM-DD') AS fecha,
-               ee.hora_recepcion,
-               vt.nombre || ' ' || vt.apellido_p AS visitante
-        FROM entregas_externas ee
-        JOIN visitantes vt ON ee.id_visitante = vt.id_visitante
-        WHERE ee.id_paciente = %s
-        ORDER BY ee.fecha_recepcion DESC
-    """, (id,))
-
-    nfc_asignacion = db.one("""
-        SELECT an.id_asignacion, d.id_serial AS serial_nfc,
-               TO_CHAR(an.fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio
-        FROM asignacion_nfc an
-        JOIN dispositivos d ON an.id_dispositivo = d.id_dispositivo
-        WHERE an.id_paciente = %s AND an.fecha_fin IS NULL
-    """, (id,))
-
-    nfc_disponibles = db.query("""
-        SELECT d.id_dispositivo, d.id_serial, d.modelo
-        FROM dispositivos d
-        WHERE d.tipo = 'NFC' AND d.estado = 'Activo'
-          AND NOT EXISTS (
-              SELECT 1 FROM asignacion_nfc an
-              WHERE an.id_dispositivo = d.id_dispositivo AND an.fecha_fin IS NULL
-          )
-        ORDER BY d.id_serial
-    """)
-
-    enfermedades_disponibles = db.query("""
-        SELECT id_enfermedad, nombre_enfermedad FROM enfermedades
-        WHERE id_enfermedad NOT IN (
-            SELECT id_enfermedad FROM tiene_enfermedad WHERE id_paciente = %s
-        )
-        ORDER BY nombre_enfermedad
-    """, (id,))
-
-    gps_disponibles = db.query("""
-        SELECT d.id_dispositivo, d.id_serial, d.modelo
-        FROM dispositivos d
-        WHERE d.tipo = 'GPS' AND d.estado = 'Activo'
-          AND NOT EXISTS (
-              SELECT 1 FROM asignacion_kit ak
-              WHERE ak.id_dispositivo_gps = d.id_dispositivo AND ak.fecha_fin IS NULL
-          )
-        ORDER BY d.id_serial
-    """)
-
-    lecturas_gps = db.query("""
-        SELECT TO_CHAR(lg.fecha_hora, 'YYYY-MM-DD') AS fecha,
-               TO_CHAR(lg.fecha_hora, 'HH24:MI:SS') AS hora,
-               lg.latitud, lg.longitud,
-               lg.nivel_bateria
-        FROM lecturas_gps lg
-        JOIN asignacion_kit ak ON lg.id_dispositivo = ak.id_dispositivo_gps
-        WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
-        ORDER BY lg.fecha_hora DESC
-        LIMIT 50
-    """, (id,))
+    lecturas_gps = db.query_sp("sp_sel_lecturas_gps_paciente", (id, 50))
 
     return render_template(
         "pacientes/historial.html",
@@ -580,15 +321,13 @@ def pacientes_historial(id):
 def pacientes_reporte_pdf(id):
     from pdf_report import generate_patient_report
     from flask import send_file
-    paciente = db.one(
-        "SELECT nombre, apellido_p FROM pacientes WHERE id_paciente = %s", (id,)
-    )
+    paciente = db.one_sp("sp_sel_paciente_por_id", (id,))
     if not paciente:
         flash("Paciente no encontrado.", "error")
         return redirect(url_for("pacientes_lista"))
     buf = generate_patient_report(id)
     nombre_archivo = (
-        f"reporte_{paciente['nombre'].lower()}_{paciente['apellido_p'].lower()}_{id}.pdf"
+        f"reporte_{paciente['nombre_paciente'].lower()}_{paciente['apellido_p_pac'].lower()}_{id}.pdf"
     )
     return send_file(buf, mimetype="application/pdf",
                      as_attachment=True, download_name=nombre_archivo)
@@ -600,11 +339,7 @@ def pacientes_transferir_sede(id):
     try:
         nueva_sede_id = int(request.form["nueva_sede_id"])
 
-        activos = db.query("""
-            SELECT id_sede_paciente, id_sede
-            FROM sede_pacientes
-            WHERE id_paciente = %s AND fecha_salida IS NULL
-        """, (id,))
+        activos = db.query_sp("sp_sel_sede_activa_por_paciente", (id,))
 
         if len(activos) > 1:
             raise Exception(
@@ -618,9 +353,8 @@ def pacientes_transferir_sede(id):
 
         db.execute("CALL sp_transferir_sede(%s, %s)", (id, nueva_sede_id))
 
-        sede_nombre = db.scalar(
-            "SELECT nombre_sede FROM sedes WHERE id_sede = %s", (nueva_sede_id,)
-        )
+        sede_row  = db.one_sp("sp_sel_sede_por_id", (nueva_sede_id,))
+        sede_nombre = sede_row["nombre_sede"] if sede_row else str(nueva_sede_id)
         flash(f"Paciente transferido a {sede_nombre} correctamente.", "success")
 
     except Exception as e:
@@ -718,24 +452,10 @@ def pacientes_cambiar_kit(id):
 @app.route("/cuidadores")
 @admin_requerido
 def cuidadores_lista():
-    cuidadores = db.query("""
-        SELECT e.id_empleado  AS id_cuidador,
-               e.nombre       AS nombre_cuidador,
-               e.apellido_p   AS apellido_p_cuid,
-               e.apellido_m   AS apellido_m_cuid,
-               e.telefono     AS telefono_cuid,
-               se.id_sede     AS id_sucursal,
-               s.nombre_sede  AS nombre_sucursal
-        FROM cuidadores c
-        JOIN empleados e ON c.id_empleado = e.id_empleado
-        LEFT JOIN sede_empleados se ON e.id_empleado = se.id_empleado
-                                   AND se.fecha_salida IS NULL
-        LEFT JOIN sedes s ON se.id_sede = s.id_sede
-        ORDER BY e.id_empleado
-    """)
+    cuidadores = db.query_sp("sp_sel_cuidadores")
     return render_template("cuidadores/list.html",
                            cuidadores=cuidadores,
-                           sucursales=db.query("SELECT * FROM sedes ORDER BY id_sede"))
+                           sucursales=db.query_sp("sp_sel_sedes"))
 
 
 @app.route("/cuidadores/nuevo", methods=["GET", "POST"])
@@ -764,17 +484,7 @@ def cuidadores_nuevo():
 @app.route("/cuidadores/editar/<int:id>", methods=["GET", "POST"])
 @admin_requerido
 def cuidadores_editar(id):
-    cuidador = db.one("""
-        SELECT e.id_empleado  AS id_cuidador,
-               e.nombre       AS nombre_cuidador,
-               e.apellido_p   AS apellido_p_cuid,
-               e.apellido_m   AS apellido_m_cuid,
-               e.telefono     AS telefono_cuid,
-               e.CURP_pasaporte AS curp_pasaporte
-        FROM cuidadores c
-        JOIN empleados e ON c.id_empleado = e.id_empleado
-        WHERE c.id_empleado = %s
-    """, (id,))
+    cuidador = db.one_sp("sp_sel_cuidador_por_id", (id,))
 
     if not cuidador:
         flash("Cuidador no encontrado.", "error")
@@ -817,19 +527,7 @@ def cuidadores_eliminar(id):
 @app.route("/turnos")
 @admin_requerido
 def turnos_lista():
-    turnos = db.query("""
-        SELECT tc.id_turno, tc.hora_inicio, tc.hora_fin, tc.activo,
-               tc.lunes, tc.martes, tc.miercoles, tc.jueves,
-               tc.viernes, tc.sabado, tc.domingo,
-               z.nombre_zona, tc.id_zona,
-               e.nombre || ' ' || e.apellido_p AS nombre_cuidador,
-               tc.id_cuidador
-        FROM turno_cuidador tc
-        JOIN zonas z      ON tc.id_zona     = z.id_zona
-        JOIN cuidadores c ON tc.id_cuidador = c.id_empleado
-        JOIN empleados e  ON c.id_empleado  = e.id_empleado
-        ORDER BY z.nombre_zona, tc.hora_inicio
-    """)
+    turnos = db.query_sp("sp_sel_turnos")
     return render_template("turnos/list.html", turnos=turnos)
 
 
@@ -857,13 +555,8 @@ def turnos_nuevo():
         except Exception as e:
             flash(f"Error al registrar turno: {e}", "error")
 
-    cuidadores = db.query("""
-        SELECT c.id_empleado AS id_cuidador,
-               e.nombre || ' ' || e.apellido_p AS nombre
-        FROM cuidadores c JOIN empleados e ON c.id_empleado = e.id_empleado
-        ORDER BY e.nombre
-    """)
-    zonas_list = db.query("SELECT id_zona, nombre_zona FROM zonas ORDER BY nombre_zona")
+    cuidadores = db.query_sp("sp_sel_cuidadores_dropdown")
+    zonas_list = db.query_sp("sp_sel_zonas_lista")
     return render_template("turnos/form.html", turno=None,
                            cuidadores=cuidadores, zonas=zonas_list)
 
@@ -871,15 +564,7 @@ def turnos_nuevo():
 @app.route("/turnos/editar/<int:id>", methods=["GET", "POST"])
 @admin_requerido
 def turnos_editar(id):
-    turno = db.one("""
-        SELECT tc.*, z.nombre_zona,
-               e.nombre || ' ' || e.apellido_p AS nombre_cuidador
-        FROM turno_cuidador tc
-        JOIN zonas z      ON tc.id_zona     = z.id_zona
-        JOIN cuidadores c ON tc.id_cuidador = c.id_empleado
-        JOIN empleados e  ON c.id_empleado  = e.id_empleado
-        WHERE tc.id_turno = %s
-    """, (id,))
+    turno = db.one_sp("sp_sel_turno_por_id", (id,))
     if not turno:
         flash("Turno no encontrado.", "error")
         return redirect(url_for("turnos_lista"))
@@ -905,13 +590,8 @@ def turnos_editar(id):
         except Exception as e:
             flash(f"Error al actualizar turno: {e}", "error")
 
-    cuidadores = db.query("""
-        SELECT c.id_empleado AS id_cuidador,
-               e.nombre || ' ' || e.apellido_p AS nombre
-        FROM cuidadores c JOIN empleados e ON c.id_empleado = e.id_empleado
-        ORDER BY e.nombre
-    """)
-    zonas_list = db.query("SELECT id_zona, nombre_zona FROM zonas ORDER BY nombre_zona")
+    cuidadores = db.query_sp("sp_sel_cuidadores_dropdown")
+    zonas_list = db.query_sp("sp_sel_zonas_lista")
     return render_template("turnos/form.html", turno=turno,
                            cuidadores=cuidadores, zonas=zonas_list)
 
@@ -944,30 +624,9 @@ def beacon_asignaciones():
             flash(f"Error al asignar beacon: {e}", "error")
         return redirect(url_for("beacon_asignaciones"))
 
-    asignaciones = db.query(
-        """SELECT ab.id_asignacion, ab.fecha_inicio, ab.fecha_fin,
-                  d.id_serial, d.modelo,
-                  e.nombre || ' ' || e.apellido_p AS nombre_cuidador
-           FROM asignacion_beacon ab
-           JOIN dispositivos d ON ab.id_dispositivo = d.id_dispositivo
-           JOIN empleados e    ON ab.id_cuidador    = e.id_empleado
-           ORDER BY ab.fecha_fin IS NULL DESC, ab.fecha_inicio DESC"""
-    )
-    beacons = db.query(
-        """SELECT d.id_dispositivo, d.id_serial, d.modelo
-           FROM dispositivos d
-           WHERE d.tipo = 'BEACON'
-             AND d.id_dispositivo NOT IN (
-                 SELECT id_dispositivo FROM asignacion_beacon WHERE fecha_fin IS NULL)
-           ORDER BY d.id_serial"""
-    )
-    cuidadores = db.query(
-        """SELECT c.id_empleado, e.nombre || ' ' || e.apellido_p AS nombre
-           FROM cuidadores c JOIN empleados e ON c.id_empleado = e.id_empleado
-           WHERE c.id_empleado NOT IN (
-               SELECT id_cuidador FROM asignacion_beacon WHERE fecha_fin IS NULL)
-           ORDER BY e.nombre"""
-    )
+    asignaciones = db.query_sp("sp_sel_asignacion_beacon_todas")
+    beacons      = db.query_sp("sp_sel_beacons_disponibles_asig")
+    cuidadores   = db.query_sp("sp_sel_cuidadores_sin_beacon")
     return render_template("equipamiento/asignacion_beacons.html",
                            asignaciones=asignaciones,
                            beacons=beacons,
@@ -992,20 +651,7 @@ def beacon_cerrar_asignacion(id):
 @app.route("/rondas")
 @admin_requerido
 def rondas_lista():
-    rondas = db.query("""
-        SELECT db.id_deteccion,
-               db.fecha_hora,
-               db.rssi,
-               db.id_gateway,
-               d.id_serial AS serial_beacon,
-               COALESCE(e.nombre || ' ' || e.apellido_p, 'Anónimo') AS nombre_cuidador
-        FROM detecciones_beacon db
-        JOIN dispositivos d ON db.id_dispositivo = d.id_dispositivo
-        LEFT JOIN cuidadores c ON db.id_cuidador = c.id_empleado
-        LEFT JOIN empleados e ON c.id_empleado = e.id_empleado
-        ORDER BY db.fecha_hora DESC
-        LIMIT 200
-    """)
+    rondas = db.query_sp("sp_sel_rondas_recientes")
     return render_template("rondas/lista.html", rondas=rondas)
 
 
@@ -1016,56 +662,22 @@ def rondas_lista():
 @app.route("/alertas")
 @admin_requerido
 def alertas():
-    alertas_list = db.query("""
-        SELECT a.id_alerta, a.id_paciente, a.tipo_alerta, a.estatus, a.fecha_hora,
-               COALESCE(
-                   p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m,
-                   '— Zona: ' || z.nombre_zona,
-                   '—'
-               ) AS paciente,
-               COALESCE(s.nombre_sede, sz.nombre_sede, '—') AS nombre_sucursal,
-               aeo.tipo_evento,
-               aeo.regla_disparada,
-               -- Top-priority contact (kept for non-critical alert types)
-               ce.nombre || ' ' || ce.apellido_p AS contacto_prioritario,
-               ce.telefono AS telefono_contacto
-        FROM alertas a
-        LEFT JOIN pacientes p       ON a.id_paciente = p.id_paciente
-        LEFT JOIN zonas z           ON a.id_zona = z.id_zona
-        LEFT JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-                                   AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s           ON sp.id_sede = s.id_sede
-        LEFT JOIN sede_zonas szr    ON a.id_zona = szr.id_zona
-        LEFT JOIN sedes sz          ON szr.id_sede = sz.id_sede
-        LEFT JOIN alerta_evento_origen aeo ON aeo.id_alerta = a.id_alerta
-        LEFT JOIN (
-            SELECT pc.id_paciente, pc.id_contacto
-            FROM paciente_contactos pc
-            WHERE pc.prioridad = (
-                SELECT MIN(pc2.prioridad)
-                FROM paciente_contactos pc2
-                WHERE pc2.id_paciente = pc.id_paciente
-            )
-        ) pc_top ON pc_top.id_paciente = a.id_paciente
-        LEFT JOIN contactos_emergencia ce ON ce.id_contacto = pc_top.id_contacto
-        ORDER BY a.fecha_hora DESC
-    """)
+    alertas_list = db.query_sp("sp_sel_alertas")
 
-    # Build full escalation chain for critical alerts (Salida de Zona, Botón SOS)
-    patient_ids = list({a["id_paciente"] for a in alertas_list if a.get("id_paciente")})
+    patient_ids_set = {a["id_paciente"] for a in alertas_list if a.get("id_paciente")}
     contactos_por_paciente = {}
-    if patient_ids:
-        rows = db.query("""
-            SELECT pc.id_paciente, pc.prioridad,
-                   ce.nombre || ' ' || ce.apellido_p AS nombre,
-                   ce.telefono, ce.relacion AS parentesco
-            FROM paciente_contactos pc
-            JOIN contactos_emergencia ce ON ce.id_contacto = pc.id_contacto
-            WHERE pc.id_paciente = ANY(%s)
-            ORDER BY pc.id_paciente, pc.prioridad
-        """, (patient_ids,))
-        for row in rows:
-            contactos_por_paciente.setdefault(row["id_paciente"], []).append(row)
+    if patient_ids_set:
+        all_contacts = db.query_sp("sp_sel_contactos_emergencia")
+        for row in all_contacts:
+            pid = row["id_paciente"]
+            if pid in patient_ids_set:
+                contactos_por_paciente.setdefault(pid, []).append({
+                    "id_paciente": pid,
+                    "prioridad":   row["prioridad"],
+                    "nombre":      row["nombre_completo"],
+                    "telefono":    row["telefono"],
+                    "parentesco":  row["relacion"],
+                })
 
     return render_template("alertas.html", alertas=alertas_list,
                            contactos_por_paciente=contactos_por_paciente)
@@ -1074,8 +686,8 @@ def alertas():
 @app.route("/alertas/nueva", methods=["GET", "POST"])
 @admin_requerido
 def alertas_nueva():
-    pacientes   = db.query("SELECT id_paciente, nombre || ' ' || apellido_p AS nombre FROM pacientes WHERE id_estado != 3 ORDER BY nombre")
-    tipos       = db.query("SELECT tipo_alerta FROM cat_tipo_alerta ORDER BY tipo_alerta")
+    pacientes = db.query_sp("sp_sel_pacientes_activos")
+    tipos     = db.query_sp("sp_sel_cat_tipo_alerta")
 
     if request.method == "POST":
         try:
@@ -1127,33 +739,7 @@ def alertas_eliminar(id):
 @app.route("/dispositivos")
 @admin_requerido
 def dispositivos():
-    dispositivos_list = db.query("""
-        SELECT d.id_dispositivo,
-               d.id_serial AS codigo,
-               d.tipo,
-               d.modelo,
-               d.estado    AS estatus,
-               (
-                   SELECT lg.nivel_bateria
-                   FROM lecturas_gps lg
-                   WHERE lg.id_dispositivo = d.id_dispositivo
-                   ORDER BY lg.fecha_hora DESC
-                   LIMIT 1
-               ) AS bateria,
-               COALESCE(
-                   p.nombre || ' ' || p.apellido_p, '—'
-               ) AS paciente,
-               sp.id_sede  AS id_sucursal,
-               COALESCE(s.nombre_sede, '—') AS nombre_sucursal
-        FROM dispositivos d
-        LEFT JOIN asignacion_kit ak
-               ON d.id_dispositivo = ak.id_dispositivo_gps AND ak.fecha_fin IS NULL
-        LEFT JOIN pacientes p ON ak.id_paciente = p.id_paciente
-        LEFT JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-                                   AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s ON sp.id_sede = s.id_sede
-        ORDER BY d.id_dispositivo
-    """)
+    dispositivos_list = db.query_sp("sp_sel_dispositivos")
     return render_template("dispositivos.html", dispositivos=dispositivos_list)
 
 
@@ -1180,7 +766,7 @@ def dispositivos_nuevo():
 @app.route("/dispositivos/editar/<int:id>", methods=["GET", "POST"])
 @admin_requerido
 def dispositivos_editar(id):
-    disp = db.one("SELECT * FROM dispositivos WHERE id_dispositivo = %s", (id,))
+    disp = db.one_sp("sp_sel_dispositivo_raw", (id,))
     if not disp:
         flash("Dispositivo no encontrado.", "error")
         return redirect(url_for("dispositivos"))
@@ -1220,38 +806,7 @@ def dispositivos_eliminar(id):
 @app.route("/zonas")
 @admin_requerido
 def zonas():
-    zonas_list = db.query("""
-        SELECT z.id_zona, z.nombre_zona, z.radio_metros,
-               z.latitud_centro, z.longitud_centro,
-               s.id_sede    AS id_sucursal,
-               COALESCE(s.nombre_sede, '—') AS nombre_sucursal,
-               -- Pacientes activos en esta sede (nombres concatenados)
-               COALESCE(
-                   (SELECT STRING_AGG(p.nombre || ' ' || p.apellido_p, ', ' ORDER BY p.nombre)
-                    FROM pacientes p
-                    JOIN sede_pacientes sp ON sp.id_paciente = p.id_paciente
-                    WHERE sp.id_sede = sz.id_sede
-                      AND sp.fecha_salida IS NULL
-                      AND p.id_estado != 3),
-                   '—'
-               ) AS pacientes_en_zona,
-               -- Contacto de mayor prioridad de la sede (para notificación)
-               COALESCE(
-                   (SELECT ce.nombre || ' ' || ce.apellido_p || ' · ' || ce.telefono
-                    FROM paciente_contactos pc
-                    JOIN contactos_emergencia ce ON ce.id_contacto = pc.id_contacto
-                    JOIN sede_pacientes sp ON sp.id_paciente = pc.id_paciente
-                    WHERE sp.id_sede = sz.id_sede
-                      AND sp.fecha_salida IS NULL
-                    ORDER BY pc.prioridad ASC
-                    LIMIT 1),
-                   '—'
-               ) AS notificar_a
-        FROM zonas z
-        LEFT JOIN sede_zonas sz ON z.id_zona = sz.id_zona
-        LEFT JOIN sedes s       ON sz.id_sede = s.id_sede
-        ORDER BY z.id_zona
-    """)
+    zonas_list = db.query_sp("sp_sel_zonas")
     return render_template("zonas.html", zonas=zonas_list)
 
 
@@ -1272,14 +827,14 @@ def zonas_nueva():
         except Exception as e:
             flash(f"Error al registrar zona: {e}", "error")
 
-    sedes = db.query("SELECT id_sede, nombre_sede FROM sedes ORDER BY id_sede")
+    sedes = db.query_sp("sp_sel_sedes")
     return render_template("zonas_form.html", zona=None, sedes=sedes)
 
 
 @app.route("/zonas/editar/<int:id>", methods=["GET", "POST"])
 @admin_requerido
 def zonas_editar(id):
-    zona = db.one("SELECT * FROM zonas WHERE id_zona = %s", (id,))
+    zona = db.one_sp("sp_sel_zona_por_id", (id,))
     if not zona:
         flash("Zona no encontrada.", "error")
         return redirect(url_for("zonas"))
@@ -1298,7 +853,7 @@ def zonas_editar(id):
         except Exception as e:
             flash(f"Error al actualizar zona: {e}", "error")
 
-    sedes = db.query("SELECT id_sede, nombre_sede FROM sedes ORDER BY id_sede")
+    sedes = db.query_sp("sp_sel_sedes")
     return render_template("zonas_form.html", zona=zona, sedes=sedes)
 
 
@@ -1320,37 +875,12 @@ def zonas_eliminar(id):
 @app.route("/farmacia")
 @admin_requerido
 def farmacia():
-    inventario = db.query("""
-        SELECT im.GTIN, im.stock_actual, im.stock_minimo,
-               m.nombre_medicamento, s.id_sede, s.nombre_sede
-        FROM inventario_medicinas im
-        JOIN medicamentos m ON im.GTIN    = m.GTIN
-        JOIN sedes s        ON im.id_sede = s.id_sede
-        ORDER BY s.id_sede, m.nombre_medicamento
-    """)
-    criticos = [row for row in inventario if row["stock_actual"] < row["stock_minimo"]]
-
-    suministros = db.query("""
-        SELECT su.id_suministro,
-               TO_CHAR(su.fecha_entrega, 'YYYY-MM-DD') AS fecha_entrega,
-               su.estado,
-               fp.nombre AS farmacia,
-               s.nombre_sede,
-               COALESCE(STRING_AGG(m.nombre_medicamento, ' · '
-                        ORDER BY m.nombre_medicamento), '—') AS medicamentos
-        FROM suministros su
-        JOIN farmacias_proveedoras fp ON su.id_farmacia = fp.id_farmacia
-        JOIN sedes s                  ON su.id_sede     = s.id_sede
-        LEFT JOIN suministro_medicinas sm ON su.id_suministro = sm.id_suministro
-        LEFT JOIN medicamentos m          ON sm.GTIN          = m.GTIN
-        GROUP BY su.id_suministro, su.fecha_entrega, su.estado,
-                 fp.nombre, s.nombre_sede
-        ORDER BY su.id_suministro DESC
-    """)
-
-    farmacias     = db.query("SELECT * FROM farmacias_proveedoras ORDER BY id_farmacia")
-    medicamentos  = db.query("SELECT GTIN, nombre_medicamento FROM medicamentos ORDER BY nombre_medicamento")
-    sedes         = db.query("SELECT id_sede, nombre_sede FROM sedes ORDER BY id_sede")
+    inventario   = db.query_sp("sp_sel_inventario_farmacia")
+    criticos     = [row for row in inventario if row["stock_actual"] < row["stock_minimo"]]
+    suministros  = db.query_sp("sp_sel_suministros")
+    farmacias    = db.query_sp("sp_sel_farmacias_proveedoras")
+    medicamentos = db.query_sp("sp_sel_medicamentos_catalogo")
+    sedes        = db.query_sp("sp_sel_sedes")
 
     return render_template(
         "farmacia.html",
@@ -1382,13 +912,13 @@ def farmacia_ajustar_stock():
 @app.route("/farmacia/suministro/nuevo", methods=["GET", "POST"])
 @admin_requerido
 def farmacia_suministro_nuevo():
-    farmacias    = db.query("SELECT * FROM farmacias_proveedoras ORDER BY id_farmacia")
-    sedes        = db.query("SELECT id_sede, nombre_sede FROM sedes ORDER BY id_sede")
-    medicamentos = db.query("SELECT GTIN, nombre_medicamento FROM medicamentos ORDER BY nombre_medicamento")
+    farmacias    = db.query_sp("sp_sel_farmacias_proveedoras")
+    sedes        = db.query_sp("sp_sel_sedes")
+    medicamentos = db.query_sp("sp_sel_medicamentos_catalogo")
 
     if request.method == "POST":
         try:
-            id_sum      = int(request.form["id_suministro"])
+            id_sum      = db.one_sp("sp_sel_next_id_suministro")["next_id"]
             id_farmacia = int(request.form["id_farmacia"])
             id_sede     = int(request.form["id_sede"])
             fecha       = request.form["fecha_entrega"]
@@ -1428,44 +958,22 @@ def farmacia_suministro_nuevo():
 @app.route("/farmacia/suministro/<int:id>")
 @admin_requerido
 def farmacia_suministro_detalle(id):
-    suministro = db.one("""
-        SELECT su.id_suministro,
-               TO_CHAR(su.fecha_entrega, 'YYYY-MM-DD') AS fecha_entrega,
-               su.hora_entrega,
-               su.estado,
-               fp.nombre AS farmacia,
-               fp.telefono AS farmacia_tel,
-               s.nombre_sede,
-               s.id_sede
-        FROM suministros su
-        JOIN farmacias_proveedoras fp ON su.id_farmacia = fp.id_farmacia
-        JOIN sedes s                  ON su.id_sede     = s.id_sede
-        WHERE su.id_suministro = %s
-    """, (id,))
+    suministro = db.one_sp("sp_sel_suministro_por_id", (id,))
 
     if not suministro:
         flash("Orden no encontrada.", "error")
         return redirect(url_for("farmacia"))
 
-    lineas = db.query("""
-        SELECT sm.GTIN, sm.cantidad,
-               m.nombre_medicamento,
-               im.stock_actual,
-               im.stock_minimo
-        FROM suministro_medicinas sm
-        JOIN medicamentos m ON sm.GTIN = m.GTIN
-        LEFT JOIN inventario_medicinas im ON sm.GTIN = im.GTIN AND im.id_sede = %s
-        ORDER BY m.nombre_medicamento
-    """, (suministro["id_sede"],))
-
-    estados = db.query("SELECT estado FROM cat_estado_suministro ORDER BY estado")
+    lineas      = db.query_sp("sp_sel_lineas_suministro_por_id", (id,))
+    estados     = db.query_sp("sp_sel_cat_estado_suministro")
+    medicamentos = db.query_sp("sp_sel_medicamentos_catalogo")
 
     return render_template(
         "farmacia_suministro_detalle.html",
         suministro=suministro,
         lineas=lineas,
         estados=estados,
-        medicamentos=db.query("SELECT GTIN, nombre_medicamento FROM medicamentos ORDER BY nombre_medicamento"),
+        medicamentos=medicamentos,
     )
 
 
@@ -1512,53 +1020,9 @@ def farmacia_suministro_eliminar(id):
 @app.route("/visitas")
 @admin_requerido
 def visitas():
-    visitas_hoy = db.query("""
-        SELECT v.id_visita,
-               TO_CHAR(v.fecha_entrada, 'YYYY-MM-DD') AS fecha_entrada,
-               v.hora_entrada, v.fecha_salida, v.hora_salida,
-               p.nombre || ' ' || p.apellido_p AS paciente,
-               vt.nombre || ' ' || vt.apellido_p AS visitante,
-               vt.relacion,
-               v.id_sede AS id_sucursal,
-               s.nombre_sede AS nombre_sucursal
-        FROM visitas v
-        JOIN pacientes p   ON v.id_paciente  = p.id_paciente
-        JOIN visitantes vt ON v.id_visitante = vt.id_visitante
-        JOIN sedes s       ON v.id_sede      = s.id_sede
-        WHERE v.fecha_entrada = CURRENT_DATE
-        ORDER BY v.hora_entrada DESC
-    """)
-
-    visitas_hist = db.query("""
-        SELECT v.id_visita,
-               TO_CHAR(v.fecha_entrada, 'YYYY-MM-DD') AS fecha_entrada,
-               v.hora_entrada, v.fecha_salida, v.hora_salida,
-               p.nombre || ' ' || p.apellido_p AS paciente,
-               vt.nombre || ' ' || vt.apellido_p AS visitante,
-               vt.relacion,
-               v.id_sede AS id_sucursal,
-               s.nombre_sede AS nombre_sucursal
-        FROM visitas v
-        JOIN pacientes p   ON v.id_paciente  = p.id_paciente
-        JOIN visitantes vt ON v.id_visitante = vt.id_visitante
-        JOIN sedes s       ON v.id_sede      = s.id_sede
-        WHERE v.fecha_entrada < CURRENT_DATE
-        ORDER BY v.fecha_entrada DESC
-        LIMIT 50
-    """)
-
-    entregas = db.query("""
-        SELECT ee.id_entrega, ee.descripcion, ee.estado,
-               TO_CHAR(ee.fecha_recepcion, 'YYYY-MM-DD') AS fecha,
-               ee.hora_recepcion,
-               p.nombre  || ' ' || p.apellido_p  AS paciente,
-               vt.nombre || ' ' || vt.apellido_p AS visitante
-        FROM entregas_externas ee
-        JOIN pacientes p   ON ee.id_paciente  = p.id_paciente
-        JOIN visitantes vt ON ee.id_visitante = vt.id_visitante
-        ORDER BY ee.fecha_recepcion DESC
-        LIMIT 30
-    """)
+    visitas_hoy  = db.query_sp("sp_sel_visitas_hoy")
+    visitas_hist = db.query_sp("sp_sel_visitas_historial")
+    entregas     = db.query_sp("sp_sel_entregas_externas")[:30]
 
     return render_template(
         "visitas.html",
@@ -1572,9 +1036,9 @@ def visitas():
 @app.route("/visitas/nueva", methods=["GET", "POST"])
 @admin_requerido
 def visitas_nueva():
-    pacientes   = db.query("SELECT id_paciente, nombre || ' ' || apellido_p AS nombre FROM pacientes WHERE id_estado != 3 ORDER BY nombre")
-    visitantes  = db.query("SELECT id_visitante, nombre || ' ' || apellido_p AS nombre, relacion FROM visitantes ORDER BY nombre")
-    sedes       = db.query("SELECT id_sede, nombre_sede FROM sedes ORDER BY id_sede")
+    pacientes  = db.query_sp("sp_sel_pacientes_activos")
+    visitantes = db.query_sp("sp_sel_visitantes")
+    sedes      = db.query_sp("sp_sel_sedes")
 
     if request.method == "POST":
         try:
@@ -1609,62 +1073,9 @@ def visitas_nueva():
 @app.route("/recetas")
 @admin_requerido
 def recetas_lista():
-    recetas = db.query("""
-        SELECT
-            r.id_receta,
-            r.estado,
-            TO_CHAR(r.fecha, 'DD/MM/YYYY') AS fecha,
-            p.id_paciente,
-            p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS nombre_paciente,
-            COALESCE(s.nombre_sede, '—') AS nombre_sede,
-            COUNT(DISTINCT rm.id_detalle)  AS n_medicamentos,
-            d.id_serial                    AS serial_nfc,
-            TO_CHAR(rn.fecha_inicio_gestion, 'DD/MM/YYYY') AS nfc_desde,
-            COUNT(ln.id_lectura_nfc)
-                FILTER (WHERE ln.fecha_hora::date = CURRENT_DATE)               AS lecturas_hoy,
-            COUNT(ln.id_lectura_nfc)
-                FILTER (WHERE ln.fecha_hora::date = CURRENT_DATE
-                          AND ln.resultado = 'Exitosa')                          AS exitosas_hoy
-        FROM recetas r
-        JOIN pacientes p
-            ON p.id_paciente = r.id_paciente
-        LEFT JOIN sede_pacientes sp
-            ON sp.id_paciente = p.id_paciente AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s
-            ON s.id_sede = sp.id_sede
-        LEFT JOIN receta_medicamentos rm
-            ON rm.id_receta = r.id_receta
-        LEFT JOIN receta_nfc rn
-            ON rn.id_receta = r.id_receta AND rn.fecha_fin_gestion IS NULL
-        LEFT JOIN dispositivos d
-            ON d.id_dispositivo = rn.id_dispositivo
-        LEFT JOIN lecturas_nfc ln
-            ON ln.id_receta = r.id_receta
-        WHERE p.id_estado != 3
-        GROUP BY r.id_receta, r.estado, r.fecha, p.id_paciente, p.nombre, p.apellido_p,
-                 p.apellido_m, s.nombre_sede, d.id_serial, rn.fecha_inicio_gestion
-        ORDER BY r.fecha DESC
-    """)
+    recetas = db.query_sp("sp_sel_recetas")
 
-    adherencia_chart = db.query("""
-        SELECT nombre_paciente, exitosas, total
-        FROM (
-            SELECT p.nombre || ' ' || p.apellido_p AS nombre_paciente,
-                   COUNT(ln.id_lectura_nfc)
-                       FILTER (WHERE ln.resultado = 'Exitosa') AS exitosas,
-                   COUNT(ln.id_lectura_nfc)                    AS total
-            FROM recetas r
-            JOIN pacientes p ON p.id_paciente = r.id_paciente
-            LEFT JOIN lecturas_nfc ln
-                ON ln.id_receta = r.id_receta
-                AND ln.fecha_hora >= NOW() - INTERVAL '30 days'
-            WHERE p.id_estado != 3
-            GROUP BY p.id_paciente, p.nombre, p.apellido_p
-            HAVING COUNT(ln.id_lectura_nfc) > 0
-        ) sub
-        ORDER BY exitosas::float / NULLIF(total, 0) DESC
-        LIMIT 15
-    """)
+    adherencia_chart = db.query_sp("sp_sel_adherencia_nfc_por_paciente")
 
     return render_template("recetas.html", recetas=recetas, adherencia_chart=adherencia_chart)
 
@@ -1672,20 +1083,12 @@ def recetas_lista():
 @app.route("/recetas/nueva", methods=["GET", "POST"])
 @admin_requerido
 def recetas_nueva():
-    pacientes = db.query("""
-        SELECT p.id_paciente,
-               p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS nombre_completo
-        FROM pacientes p
-        WHERE p.id_estado != 3
-        ORDER BY p.apellido_p, p.nombre
-    """)
+    pacientes = db.query_sp("sp_sel_pacientes_activos")
     if request.method == "POST":
         try:
             id_paciente = int(request.form["id_paciente"])
             fecha       = request.form["fecha"]
-            next_id     = db.scalar(
-                "SELECT COALESCE(MAX(id_receta), 0) + 1 FROM recetas"
-            )
+            next_id     = db.one_sp("sp_sel_next_id_receta")["next_id"]
             db.execute("CALL sp_receta_crear(%s, %s, %s)", (next_id, id_paciente, fecha))
             flash("Receta creada correctamente.", "success")
             return redirect(url_for("recetas_detalle", id=next_id))
@@ -1698,75 +1101,15 @@ def recetas_nueva():
 @app.route("/recetas/<int:id>")
 @admin_requerido
 def recetas_detalle(id):
-    receta = db.one("""
-        SELECT r.id_receta, r.estado, TO_CHAR(r.fecha, 'DD/MM/YYYY') AS fecha,
-               p.id_paciente,
-               p.nombre || ' ' || p.apellido_p || ' ' || p.apellido_m AS nombre_paciente,
-               COALESCE(s.nombre_sede, '—') AS nombre_sede
-        FROM recetas r
-        JOIN pacientes p ON p.id_paciente = r.id_paciente
-        LEFT JOIN sede_pacientes sp ON sp.id_paciente = p.id_paciente AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s ON s.id_sede = sp.id_sede
-        WHERE r.id_receta = %s
-    """, (id,))
+    receta = db.one_sp("sp_sel_receta_por_id", (id,))
     if not receta:
         abort(404)
 
-    medicamentos = db.query("""
-        SELECT rm.id_detalle, rm.gtin, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas,
-               COUNT(ln.id_lectura_nfc)                                     AS total_lecturas,
-               COUNT(ln.id_lectura_nfc) FILTER (WHERE ln.resultado='Exitosa') AS exitosas,
-               COUNT(ln.id_lectura_nfc)
-                   FILTER (WHERE ln.resultado='Exitosa'
-                             AND ln.fecha_hora >= CURRENT_DATE - INTERVAL '30 days') AS exitosas_30d
-        FROM receta_medicamentos rm
-        JOIN medicamentos m ON m.gtin = rm.gtin
-        LEFT JOIN receta_nfc rn ON rn.id_receta = rm.id_receta AND rn.fecha_fin_gestion IS NULL
-        LEFT JOIN lecturas_nfc ln
-            ON ln.id_receta = rm.id_receta
-           AND ln.id_dispositivo = rn.id_dispositivo
-        WHERE rm.id_receta = %s
-        GROUP BY rm.id_detalle, rm.gtin, m.nombre_medicamento, rm.dosis, rm.frecuencia_horas
-        ORDER BY m.nombre_medicamento
-    """, (id,))
-
-    medicamentos_disponibles = db.query("""
-        SELECT gtin, nombre_medicamento FROM medicamentos
-        WHERE gtin NOT IN (
-            SELECT gtin FROM receta_medicamentos WHERE id_receta = %s
-        )
-        ORDER BY nombre_medicamento
-    """, (id,))
-
-    nfc = db.one("""
-        SELECT rn.id_receta, rn.id_dispositivo, d.id_serial,
-               TO_CHAR(rn.fecha_inicio_gestion, 'DD/MM/YYYY') AS desde,
-               rn.fecha_fin_gestion
-        FROM receta_nfc rn
-        JOIN dispositivos d ON d.id_dispositivo = rn.id_dispositivo
-        WHERE rn.id_receta = %s AND rn.fecha_fin_gestion IS NULL
-    """, (id,))
-
-    lecturas = db.query("""
-        SELECT ln.id_lectura_nfc,
-               TO_CHAR(ln.fecha_hora, 'DD/MM/YYYY HH24:MI') AS fecha_hora,
-               ln.tipo_lectura, ln.resultado
-        FROM lecturas_nfc ln
-        WHERE ln.id_receta = %s
-        ORDER BY ln.fecha_hora DESC
-        LIMIT 20
-    """, (id,))
-
-    # NFC devices available for assignment (not currently linked to any active receta)
-    nfc_disponibles = db.query("""
-        SELECT d.id_dispositivo, d.id_serial, d.modelo
-        FROM dispositivos d
-        WHERE d.tipo = 'NFC' AND d.estado = 'Activo'
-          AND d.id_dispositivo NOT IN (
-              SELECT rn.id_dispositivo FROM receta_nfc rn WHERE rn.fecha_fin_gestion IS NULL
-          )
-        ORDER BY d.id_serial
-    """)
+    medicamentos             = db.query_sp("sp_sel_receta_medicamentos_por_receta", (id,))
+    medicamentos_disponibles = db.query_sp("sp_sel_medicamentos_disponibles_receta", (id,))
+    nfc                      = db.one_sp("sp_sel_nfc_activo_por_receta", (id,))
+    lecturas                 = db.query_sp("sp_sel_lecturas_nfc_por_receta", (id,))
+    nfc_disponibles          = db.query_sp("sp_sel_nfc_disponibles")
 
     return render_template("recetas_detalle.html",
                            receta=receta,
@@ -1784,9 +1127,7 @@ def recetas_agregar_medicamento(id):
         gtin             = request.form["gtin"]
         dosis            = request.form["dosis"].strip()
         frecuencia_horas = int(request.form["frecuencia_horas"])
-        next_det = db.scalar(
-            "SELECT COALESCE(MAX(id_detalle), 0) + 1 FROM receta_medicamentos"
-        )
+        next_det = db.one_sp("sp_sel_next_id_detalle_receta")["next_id"]
         db.execute(
             "CALL sp_receta_agregar_medicamento(%s, %s, %s, %s, %s)",
             (next_det, id, gtin, dosis, frecuencia_horas)
@@ -1883,14 +1224,7 @@ def recetas_cambiar_nfc(id):
 @app.route("/reportes")
 @admin_requerido
 def reportes():
-    # Quick live counters for the header
-    stats = {
-        "alertas_activas": db.scalar("SELECT COUNT(*) FROM alertas WHERE estatus='Activa'") or 0,
-        "lecturas_nfc_hoy": db.scalar(
-            "SELECT COUNT(*) FROM lecturas_nfc WHERE fecha_hora::date = CURRENT_DATE") or 0,
-        "pacientes_activos": db.scalar(
-            "SELECT COUNT(*) FROM pacientes WHERE id_estado != 3") or 0,
-    }
+    stats = dict(db.one_sp("sp_sel_reportes_stats"))
     return render_template("reportes.html", stats=stats)
 
 
@@ -1901,21 +1235,20 @@ def reportes():
 @app.route("/clinica")
 @medico_requerido
 def clinica_sedes():
-    sedes = db.query("SELECT * FROM sedes ORDER BY id_sede")
+    sedes      = db.query_sp("sp_sel_sedes")
+    sede_stats = {r["id_sede"]: r for r in db.query_sp("sp_sel_stats_por_sede")}
     result = []
     for s in sedes:
-        total = db.scalar("""
-            SELECT COUNT(*) FROM sede_pacientes
-            WHERE id_sede = %s AND fecha_salida IS NULL
-        """, (s["id_sede"],)) or 0
+        sid = s["id_sede"]
+        ss  = sede_stats.get(sid, {})
         result.append({
             "sucursal": {
-                "id_sucursal": s["id_sede"],
+                "id_sucursal": sid,
                 "nombre":      s["nombre_sede"],
                 "zona":        s.get("municipio", ""),
-                "direccion":   f"{s.get('calle','').strip()} {s.get('numero','').strip()}, {s.get('municipio','').strip()}",
+                "direccion":   s.get("direccion", ""),
             },
-            "total_pacientes": total,
+            "total_pacientes": ss.get("total_pacientes", 0),
         })
     return render_template("clinica_sedes.html", sedes=result)
 
@@ -1923,184 +1256,62 @@ def clinica_sedes():
 @app.route("/clinica/<int:id_sucursal>")
 @medico_requerido
 def dashboard_clinica(id_sucursal):
-    sede = db.one("SELECT * FROM sedes WHERE id_sede = %s", (id_sucursal,))
+    sede = db.one_sp("sp_sel_sede_por_id", (id_sucursal,))
     if not sede:
         return redirect(url_for("clinica_sedes"))
 
     sucursal = {"id_sucursal": sede["id_sede"], "nombre": sede["nombre_sede"]}
 
-    pacientes_sede = db.query("""
-        SELECT p.id_paciente,
-               p.nombre           AS nombre_paciente,
-               p.apellido_p       AS apellido_p_pac,
-               p.apellido_m       AS apellido_m_pac,
-               p.fecha_nacimiento,
-               ep.desc_estado
-        FROM pacientes p
-        JOIN estados_paciente ep ON p.id_estado = ep.id_estado
-        JOIN sede_pacientes sp   ON p.id_paciente = sp.id_paciente
-        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND p.id_estado != 3
-        ORDER BY p.nombre
-    """, (id_sucursal,))
+    pacientes_sede = db.query_sp("sp_sel_clinica_pacientes", (id_sucursal,))
 
-    alertas_activas_count = db.scalar("""
-        SELECT COUNT(*) FROM alertas a
-        JOIN sede_pacientes sp ON a.id_paciente = sp.id_paciente
-        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND a.estatus = 'Activa'
-    """, (id_sucursal,)) or 0
+    alertas_medicas_rows  = db.query_sp("sp_sel_clinica_alertas_activas", (id_sucursal,))
+    alertas_activas_count = len(alertas_medicas_rows)
+    alertas_medicas       = alertas_medicas_rows[:10]
 
     from datetime import datetime as _dt
     _now = _dt.now()
-    _dow = _now.weekday()  # 0=lunes … 6=domingo
-    _dia_col = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"][_dow]
-    staff_en_turno = db.scalar(f"""
-        SELECT COUNT(DISTINCT tc.id_cuidador)
-        FROM turno_cuidador tc
-        JOIN sede_zonas sz ON tc.id_zona = sz.id_zona
-        WHERE tc.activo = TRUE
-          AND tc.hora_inicio <= CURRENT_TIME
-          AND tc.hora_fin    >  CURRENT_TIME
-          AND tc.{_dia_col} = TRUE
-          AND sz.id_sede = %s
-    """, (id_sucursal,)) or 0
-    tareas_pendientes = 0  # no hay tabla tareas aún
+    staff_row      = db.one_sp("sp_sel_staff_en_turno", (id_sucursal,))
+    staff_en_turno = staff_row["staff_count"] if staff_row else 0
+    tareas_pendientes = 0
 
-    # Cuidadores activos por paciente para esta sede {id_paciente: [...]}
-    _asig_rows = db.query("""
-        SELECT ac.id_paciente,
-               e.nombre     AS nombre_cuidador,
-               e.apellido_p AS apellido_p_cuid,
-               e.apellido_m AS apellido_m_cuid,
-               e.telefono   AS telefono_cuid,
-               TO_CHAR(ac.fecha_inicio, 'YYYY-MM-DD') AS fecha_asig_cuidador
-        FROM asignacion_cuidador ac
-        JOIN cuidadores c ON ac.id_cuidador = c.id_empleado
-        JOIN empleados  e ON c.id_empleado  = e.id_empleado
-        JOIN sede_pacientes sp ON ac.id_paciente = sp.id_paciente
-        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND ac.fecha_fin IS NULL
-    """, (id_sucursal,))
+    _asig_rows = db.query_sp("sp_sel_clinica_asignaciones", (id_sucursal,))
     asignaciones = {}
     for row in _asig_rows:
-        asignaciones.setdefault(row["id_paciente"], []).append(row)
+        rec = dict(row)
+        rec["apellido_p_cuid"] = rec.pop("apellido_p", "")
+        rec["apellido_m_cuid"] = rec.pop("apellido_m", "")
+        asignaciones.setdefault(row["id_paciente"], []).append(rec)
 
-    # Medicamentos por paciente via recetas activas {id_paciente: [...]}
-    _med_rows = db.query("""
-        SELECT r.id_paciente,
-               m.nombre_medicamento AS medicamento,
-               rm.dosis,
-               rm.frecuencia_horas
-        FROM recetas r
-        JOIN receta_medicamentos rm ON r.id_receta = rm.id_receta
-        JOIN medicamentos m         ON rm.gtin     = m.gtin
-        JOIN sede_pacientes sp      ON r.id_paciente = sp.id_paciente
-        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND r.estado = 'Activa'
-        ORDER BY r.id_paciente, m.nombre_medicamento
-    """, (id_sucursal,))
+    _med_rows = db.query_sp("sp_sel_clinica_meds", (id_sucursal,))
     medicamentos_por_paciente = {}
     for row in _med_rows:
         medicamentos_por_paciente.setdefault(row["id_paciente"], []).append(row)
 
-    ids_sede = {p["id_paciente"] for p in pacientes_sede}
+    _enf_rows = db.query_sp("sp_sel_clinica_enfermedades", (id_sucursal,))
+    enf_por_paciente = {}
+    for row in _enf_rows:
+        enf_por_paciente.setdefault(row["id_paciente"], []).append(row)
+
     expedientes = []
     for p in pacientes_sede:
         pid = p["id_paciente"]
-        enfermedades = db.query("""
-            SELECT e.nombre_enfermedad,
-                   TO_CHAR(te.fecha_diag, 'YYYY-MM-DD') AS fecha_diag
-            FROM tiene_enfermedad te
-            JOIN enfermedades e ON te.id_enfermedad = e.id_enfermedad
-            WHERE te.id_paciente = %s
-        """, (pid,))
         expedientes.append({
             "paciente":     p,
-            "perfil":       {},  # sin tabla perfil_clinico aún
+            "perfil":       {},
             "medicamentos": medicamentos_por_paciente.get(pid, []),
-            "bitacoras":    [],  # sin tabla bitacoras clínicas aún
-            "enfermedades": enfermedades,
+            "bitacoras":    [],
+            "enfermedades": enf_por_paciente.get(pid, []),
         })
 
-    # Incidentes = alertas reales de pacientes en esta sede
-    incidentes_sede = db.query("""
-        SELECT a.id_alerta                           AS id,
-               TO_CHAR(a.fecha_hora, 'YYYY-MM-DD')  AS fecha,
-               TO_CHAR(a.fecha_hora, 'HH24:MI')     AS hora,
-               a.id_paciente,
-               p.nombre || ' ' || p.apellido_p      AS paciente,
-               a.tipo_alerta                         AS tipo,
-               a.estatus                             AS gravedad,
-               NULL                                  AS descripcion,
-               NULL                                  AS accion_tomada
-        FROM alertas a
-        JOIN pacientes p      ON a.id_paciente = p.id_paciente
-        JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL
-        ORDER BY a.fecha_hora DESC
-        LIMIT 20
-    """, (id_sucursal,))
+    incidentes_sede = db.query_sp("sp_sel_clinica_incidentes", (id_sucursal,))
+    comedor_hoy     = db.query_sp("sp_sel_clinica_comedor_hoy", (id_sucursal,))
+    cobertura_zonas = db.query_sp("sp_sel_clinica_cobertura_zonas", (id_sucursal,))
 
-    # Alertas médicas = alertas activas de pacientes en esta sede
-    alertas_medicas = db.query("""
-        SELECT a.tipo_alerta                         AS tipo,
-               p.nombre || ' ' || p.apellido_p      AS paciente,
-               TO_CHAR(a.fecha_hora, 'HH24:MI')     AS hora,
-               TO_CHAR(a.fecha_hora, 'YYYY-MM-DD')  AS fecha,
-               a.estatus                             AS estado
-        FROM alertas a
-        JOIN pacientes p       ON a.id_paciente = p.id_paciente
-        JOIN sede_pacientes sp ON p.id_paciente  = sp.id_paciente
-        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND a.estatus = 'Activa'
-        ORDER BY a.fecha_hora DESC
-        LIMIT 10
-    """, (id_sucursal,))
+    _visitas_hoy_all = db.query_sp("sp_sel_visitas_hoy")
+    visitas_hoy = [v for v in _visitas_hoy_all if v["id_sede"] == id_sucursal]
 
-    # Bitácora del comedor hoy en esta sede
-    comedor_hoy = db.query("""
-        SELECT bc.id_bitacora  AS id,
-               bc.turno,
-               bc.menu_nombre,
-               bc.cantidad_platos,
-               bc.incidencias,
-               TO_CHAR(bc.fecha, 'YYYY-MM-DD') AS fecha,
-               e.nombre || ' ' || e.apellido_p AS cocinero
-        FROM bitacora_comedor bc
-        JOIN cocineros co ON bc.id_cocinero = co.id_empleado
-        JOIN empleados  e  ON co.id_empleado = e.id_empleado
-        WHERE bc.id_sede = %s AND bc.fecha = CURRENT_DATE
-        ORDER BY bc.turno
-    """, (id_sucursal,))
-
-    # Cobertura de zonas por turno activo ahora mismo en esta sede
-    cobertura_zonas = db.query(f"""
-        SELECT z.id_zona, z.nombre_zona,
-               e.nombre || ' ' || e.apellido_p AS nombre_cuidador,
-               tc.hora_inicio, tc.hora_fin
-        FROM turno_cuidador tc
-        JOIN zonas z      ON tc.id_zona     = z.id_zona
-        JOIN sede_zonas sz ON z.id_zona     = sz.id_zona
-        JOIN cuidadores c ON tc.id_cuidador = c.id_empleado
-        JOIN empleados e  ON c.id_empleado  = e.id_empleado
-        WHERE tc.activo = TRUE
-          AND tc.hora_inicio <= CURRENT_TIME
-          AND tc.hora_fin    >  CURRENT_TIME
-          AND tc.{_dia_col}  = TRUE
-          AND sz.id_sede = %s
-        ORDER BY z.nombre_zona, e.nombre
-    """, (id_sucursal,))
-
-    visitas_hoy = db.query("""
-        SELECT v.*, vt.nombre || ' ' || vt.apellido_p AS visitante
-        FROM visitas v
-        JOIN visitantes vt ON v.id_visitante = vt.id_visitante
-        WHERE v.id_sede = %s AND v.fecha_entrada = CURRENT_DATE
-    """, (id_sucursal,))
-
-    entregas_pend = db.query("""
-        SELECT ee.*, p.nombre || ' ' || p.apellido_p AS paciente
-        FROM entregas_externas ee
-        JOIN pacientes p ON ee.id_paciente = p.id_paciente
-        JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-        WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL AND ee.estado = 'Pendiente'
-    """, (id_sucursal,))
+    _entregas_all = db.query_sp("sp_sel_entregas_pendientes")
+    entregas_pend = [e for e in _entregas_all if e["id_sede"] == id_sucursal]
 
     # Fecha hoy en español sin locale
     _meses = ['enero','febrero','marzo','abril','mayo','junio',
@@ -2109,44 +1320,11 @@ def dashboard_clinica(id_sucursal):
     _hoy = _date.today()
     fecha_hoy = f"{_hoy.day} de {_meses[_hoy.month - 1]}, {_hoy.year}"
 
-    # Estado GPS por paciente (lateral join para última lectura)
-    estado_pacientes = db.query("""
-        SELECT p.id_paciente, p.nombre, p.apellido_p,
-               lg.latitud, lg.longitud, lg.nivel_bateria,
-               lg.fecha_hora AS ultima_lectura
-        FROM pacientes p
-        JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-            AND sp.fecha_salida IS NULL AND sp.id_sede = %s
-        LEFT JOIN asignacion_kit ak ON p.id_paciente = ak.id_paciente
-            AND ak.fecha_fin IS NULL
-        LEFT JOIN LATERAL (
-            SELECT latitud, longitud, nivel_bateria, fecha_hora
-            FROM lecturas_gps
-            WHERE id_dispositivo = ak.id_dispositivo_gps
-            ORDER BY fecha_hora DESC LIMIT 1
-        ) lg ON true
-        WHERE p.id_estado != 3
-        ORDER BY p.nombre
-    """, (id_sucursal,))
-
-    # Zonas seguras de la sede para el mapa
-    zonas_mapa = db.query("""
-        SELECT z.id_zona, z.nombre_zona,
-               z.latitud_centro, z.longitud_centro, z.radio_metros
-        FROM zonas z
-        JOIN sede_zonas sz ON sz.id_zona = z.id_zona
-        WHERE sz.id_sede = %s
-    """, (id_sucursal,))
-
-    # Pacientes con alerta 'Salida de Zona' activa
+    estado_pacientes = db.query_sp("sp_sel_clinica_gps_estado", (id_sucursal,))
+    zonas_mapa       = db.query_sp("sp_sel_clinica_zonas_mapa", (id_sucursal,))
     alertas_salida_ids = {
         row["id_paciente"]
-        for row in db.query("""
-            SELECT DISTINCT a.id_paciente FROM alertas a
-            JOIN sede_pacientes sp ON a.id_paciente = sp.id_paciente
-            WHERE sp.id_sede = %s AND sp.fecha_salida IS NULL
-              AND a.estatus = 'Activa' AND a.tipo_alerta = 'Salida de Zona'
-        """, (id_sucursal,))
+        for row in db.query_sp("sp_sel_clinica_alertas_salida_zona", (id_sucursal,))
     }
 
     # Calcular estado de zona y tiempo relativo por paciente
@@ -2175,34 +1353,9 @@ def dashboard_clinica(id_sucursal):
             else:
                 p["tiempo_rel"] = f"hace {mins // 1440} d"
 
-    # Medicamentos activos con adherencia NFC de hoy
-    meds_sede = db.query("""
-        SELECT p.id_paciente, p.nombre || ' ' || p.apellido_p AS nombre_paciente,
-               m.nombre_medicamento, rm.dosis, r.id_receta
-        FROM pacientes p
-        JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-            AND sp.fecha_salida IS NULL AND sp.id_sede = %s
-        JOIN recetas r ON p.id_paciente = r.id_paciente AND r.estado = 'Activa'
-        JOIN receta_medicamentos rm ON r.id_receta = rm.id_receta
-        JOIN medicamentos m ON rm.gtin = m.gtin
-        WHERE p.id_estado != 3
-        ORDER BY p.nombre, m.nombre_medicamento
-    """, (id_sucursal,))
-
-    receta_ids = list({med["id_receta"] for med in meds_sede})
-    if receta_ids:
-        nfc_hoy_rows = db.query("""
-            SELECT DISTINCT ON (id_receta) id_receta,
-                   TO_CHAR(fecha_hora, 'HH24:MI') AS hora_toma
-            FROM lecturas_nfc
-            WHERE id_receta = ANY(%s)
-              AND fecha_hora::date = CURRENT_DATE
-              AND resultado = 'Exitosa'
-            ORDER BY id_receta, fecha_hora DESC
-        """, (receta_ids,))
-        nfc_hoy = {row["id_receta"]: row["hora_toma"] for row in nfc_hoy_rows}
-    else:
-        nfc_hoy = {}
+    meds_sede = db.query_sp("sp_sel_clinica_meds_nfc_hoy", (id_sucursal,))
+    nfc_hoy   = {row["id_receta"]: row["hora_toma"]
+                 for row in db.query_sp("sp_sel_clinica_nfc_hoy", (id_sucursal,))}
     for med in meds_sede:
         med["tomada_hoy"] = nfc_hoy.get(med["id_receta"])
 
@@ -2243,11 +1396,8 @@ def portal_login():
         email = request.form.get("email", "").strip().lower()
         pin   = request.form.get("pin", "").strip()
 
-        contacto = db.one("""
-            SELECT id_contacto, nombre, apellido_p
-            FROM contactos_emergencia
-            WHERE LOWER(email) = %s AND pin_acceso = %s
-        """, (email, pin))
+        rows     = db.query_sp("sp_sel_contacto_login", (email,))
+        contacto = next((r for r in rows if r["pin_acceso"] == pin), None)
 
         if contacto:
             session["contacto_id"]     = contacto["id_contacto"]
@@ -2271,24 +1421,7 @@ def portal_logout():
 def portal_index():
     contacto_id = session["contacto_id"]
 
-    pacientes = db.query("""
-        SELECT p.id_paciente,
-               p.nombre        AS nombre_paciente,
-               p.apellido_p    AS apellido_p_pac,
-               p.apellido_m    AS apellido_m_pac,
-               ep.desc_estado,
-               s.nombre_sede,
-               pc.prioridad
-        FROM pacientes p
-        JOIN paciente_contactos pc ON p.id_paciente  = pc.id_paciente
-        JOIN estados_paciente   ep ON p.id_estado    = ep.id_estado
-        LEFT JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-                                   AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s           ON sp.id_sede    = s.id_sede
-        WHERE pc.id_contacto = %s AND p.id_estado != 3
-        ORDER BY pc.prioridad, p.nombre
-    """, (contacto_id,))
-
+    pacientes = db.query_sp("sp_sel_pacientes_por_contacto", (contacto_id,))
     return render_template("portal_familiar/index.html", pacientes=pacientes)
 
 
@@ -2298,28 +1431,11 @@ def portal_paciente(id):
     contacto_id = session["contacto_id"]
 
     # ── Security: verify contact-patient link ────────────────────────────────
-    if not db.one("""
-        SELECT 1 FROM paciente_contactos
-        WHERE id_paciente = %s AND id_contacto = %s
-    """, (id, contacto_id)):
+    if not db.one_sp("sp_sel_contacto_verificacion", (contacto_id, id)):
         abort(403)
 
     # ── Patient header ───────────────────────────────────────────────────────
-    paciente = db.one("""
-        SELECT p.id_paciente,
-               p.nombre        AS nombre_paciente,
-               p.apellido_p    AS apellido_p_pac,
-               p.apellido_m    AS apellido_m_pac,
-               p.fecha_nacimiento,
-               ep.desc_estado,
-               s.nombre_sede
-        FROM pacientes p
-        JOIN estados_paciente ep ON p.id_estado    = ep.id_estado
-        LEFT JOIN sede_pacientes sp ON p.id_paciente = sp.id_paciente
-                                   AND sp.fecha_salida IS NULL
-        LEFT JOIN sedes s           ON sp.id_sede    = s.id_sede
-        WHERE p.id_paciente = %s
-    """, (id,))
+    paciente = db.one_sp("sp_sel_paciente_por_id", (id,))
 
     if not paciente:
         abort(404)
@@ -2329,37 +1445,18 @@ def portal_paciente(id):
     edad = hoy.year - dob.year - ((hoy.month, hoy.day) < (dob.month, dob.day))
 
     # ── Active cuidadores ────────────────────────────────────────────────────
-    cuidadores = db.query("""
-        SELECT e.nombre || ' ' || e.apellido_p AS nombre,
-               e.telefono
-        FROM asignacion_cuidador ac
-        JOIN cuidadores c ON ac.id_cuidador = c.id_empleado
-        JOIN empleados  e ON c.id_empleado  = e.id_empleado
-        WHERE ac.id_paciente = %s AND ac.fecha_fin IS NULL
-    """, (id,))
+    _cuids_raw = db.query_sp("sp_sel_cuidadores_por_paciente", (id,))
+    cuidadores = [
+        {"nombre": f"{r['nombre_cuidador']} {r['apellido_p']}", "telefono": r["telefono_cuid"]}
+        for r in _cuids_raw
+    ]
 
-    # ── Last GPS reading (PostgreSQL lecturas_gps) ───────────────────────────
-    ultima_gps = db.one("""
-        SELECT lg.latitud, lg.longitud, lg.nivel_bateria,
-               TO_CHAR(lg.fecha_hora, 'YYYY-MM-DD') AS fecha,
-               TO_CHAR(lg.fecha_hora, 'HH24:MI')    AS hora,
-               lg.fecha_hora AS ts
-        FROM lecturas_gps lg
-        JOIN asignacion_kit ak ON lg.id_dispositivo = ak.id_dispositivo_gps
-        WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
-        ORDER BY lg.fecha_hora DESC
-        LIMIT 1
-    """, (id,))
+    # ── Last GPS reading ─────────────────────────────────────────────────────
+    _gps_raw   = db.one_sp("sp_sel_lecturas_gps_paciente", (id, 1))
+    ultima_gps = {**_gps_raw, "ts": _gps_raw["fecha_hora"]} if _gps_raw else None
 
     # ── Safe zones for patient's current sede ────────────────────────────────
-    zonas_seguras = db.query("""
-        SELECT z.id_zona, z.nombre_zona,
-               z.latitud_centro, z.longitud_centro, z.radio_metros
-        FROM zonas z
-        JOIN sede_zonas sz   ON z.id_zona    = sz.id_zona
-        JOIN sede_pacientes sp ON sz.id_sede = sp.id_sede
-        WHERE sp.id_paciente = %s AND sp.fecha_salida IS NULL
-    """, (id,))
+    zonas_seguras = db.query_sp("sp_sel_zonas_por_paciente", (id,))
 
     # Inside-zone check via Haversine (no PostGIS required for display)
     dentro_zona = False
@@ -2394,28 +1491,9 @@ def portal_paciente(id):
 
     tiempo_gps = _t_rel(ultima_gps["ts"]) if ultima_gps else None
 
-    ultima_actividad_ts = db.scalar("""
-        SELECT MAX(ts) FROM (
-            SELECT lg.fecha_hora AS ts
-            FROM lecturas_gps lg
-            JOIN asignacion_kit ak ON lg.id_dispositivo = ak.id_dispositivo_gps
-            WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
-            UNION ALL
-            SELECT ln.fecha_hora FROM lecturas_nfc ln
-            JOIN recetas r ON ln.id_receta = r.id_receta
-            WHERE r.id_paciente = %s
-            UNION ALL
-            SELECT a.fecha_hora FROM alertas a WHERE a.id_paciente = %s
-        ) ev
-    """, (id, id, id))
-
-    alerta_critica = db.one("""
-        SELECT a.tipo_alerta, a.fecha_hora
-        FROM alertas a
-        WHERE a.id_paciente = %s AND a.estatus = 'Activa'
-          AND a.tipo_alerta IN ('Salida de Zona', 'Botón SOS')
-        ORDER BY a.fecha_hora DESC LIMIT 1
-    """, (id,))
+    _act_row            = db.one_sp("sp_sel_ultima_actividad_ts", (id,))
+    ultima_actividad_ts = _act_row["ultima_actividad"] if _act_row else None
+    alerta_critica      = db.one_sp("sp_sel_alerta_critica_por_paciente", (id,))
 
     if alerta_critica:
         estado_banner = 'critica'
@@ -2428,90 +1506,24 @@ def portal_paciente(id):
     tiempo_alerta_critica = _t_rel(alerta_critica["fecha_hora"]) if alerta_critica else None
 
     # ── Alerts ───────────────────────────────────────────────────────────────
-    alertas_activas = db.query("""
-        SELECT a.tipo_alerta,
-               TO_CHAR(a.fecha_hora, 'YYYY-MM-DD') AS fecha,
-               TO_CHAR(a.fecha_hora, 'HH24:MI')    AS hora
-        FROM alertas a
-        WHERE a.id_paciente = %s AND a.estatus = 'Activa'
-        ORDER BY a.fecha_hora DESC
-    """, (id,))
-
-    alertas_historial = db.query("""
-        SELECT a.tipo_alerta,
-               TO_CHAR(a.fecha_hora, 'YYYY-MM-DD') AS fecha,
-               TO_CHAR(a.fecha_hora, 'HH24:MI')    AS hora
-        FROM alertas a
-        WHERE a.id_paciente = %s
-          AND a.estatus = 'Atendida'
-          AND a.fecha_hora >= NOW() - INTERVAL '30 days'
-        ORDER BY a.fecha_hora DESC
-    """, (id,))
+    alertas_activas   = db.query_sp("sp_sel_alertas_activas_por_paciente", (id,))
+    alertas_historial = db.query_sp("sp_sel_alertas_historial_por_paciente", (id,))
 
     # ── Medications (active recetas only, with today's NFC status) ───────────
-    medicamentos = db.query("""
-        SELECT m.nombre_medicamento, rm.dosis, rm.frecuencia_horas,
-               EXISTS (
-                   SELECT 1 FROM lecturas_nfc ln
-                   WHERE ln.id_receta = r.id_receta
-                     AND ln.fecha_hora::DATE = CURRENT_DATE
-                     AND ln.resultado = 'Exitosa'
-               ) AS tomada_hoy
-        FROM recetas r
-        JOIN receta_medicamentos rm ON r.id_receta = rm.id_receta
-        JOIN medicamentos m         ON rm.gtin     = m.gtin
-        WHERE r.id_paciente = %s AND r.estado = 'Activa'
-        ORDER BY m.nombre_medicamento
-    """, (id,))
+    medicamentos = db.query_sp("sp_sel_medicamentos_adherencia_por_paciente", (id,))
 
-    # NFC adherence today
-    dosis_hoy = db.scalar("""
-        SELECT COUNT(*)
-        FROM lecturas_nfc ln
-        WHERE ln.id_receta IN (
-            SELECT id_receta FROM recetas WHERE id_paciente = %s
-        )
-          AND ln.fecha_hora::DATE = CURRENT_DATE
-          AND ln.resultado = 'Exitosa'
-    """, (id,)) or 0
+    _dosis_row = db.one_sp("sp_sel_dosis_nfc_hoy", (id,))
+    dosis_hoy  = int(_dosis_row["dosis_hoy"]) if _dosis_row else 0
 
     # ── Recent visits ────────────────────────────────────────────────────────
-    visitas = db.query("""
-        SELECT TO_CHAR(v.fecha_entrada, 'YYYY-MM-DD') AS fecha,
-               v.hora_entrada, v.hora_salida,
-               vt.nombre || ' ' || vt.apellido_p AS visitante,
-               vt.relacion
-        FROM visitas v
-        JOIN visitantes vt ON v.id_visitante = vt.id_visitante
-        WHERE v.id_paciente = %s
-        ORDER BY v.fecha_entrada DESC, v.hora_entrada DESC
-        LIMIT 10
-    """, (id,))
+    visitas = db.query_sp("sp_sel_visitas_portal", (id,))
 
     # ── GPS battery history (last 20 readings, oldest→newest for sparkline) ────
-    bateria_historial = db.query("""
-        SELECT TO_CHAR(lg.fecha_hora, 'DD/MM HH24:MI') AS label,
-               lg.nivel_bateria
-        FROM lecturas_gps lg
-        JOIN asignacion_kit ak ON lg.id_dispositivo = ak.id_dispositivo_gps
-        WHERE ak.id_paciente = %s AND ak.fecha_fin IS NULL
-          AND lg.nivel_bateria IS NOT NULL
-        ORDER BY lg.fecha_hora DESC
-        LIMIT 20
-    """, (id,))
-    bateria_historial = list(reversed(bateria_historial))
+    bateria_historial = list(reversed(db.query_sp("sp_sel_bateria_historial_gps", (id, 20))))
 
-    # ── Last caregiver round — resolved via asignacion_beacon (caregiver-carried) ──
-    ultima_ronda = db.scalar("""
-        SELECT MAX(db2.fecha_hora)
-        FROM detecciones_beacon db2
-        JOIN asignacion_beacon ab ON ab.id_dispositivo = db2.id_dispositivo
-                                  AND ab.fecha_fin IS NULL
-        JOIN sede_empleados se    ON se.id_empleado = ab.id_cuidador
-        JOIN sede_pacientes sp    ON sp.id_sede = se.id_sede
-                                  AND sp.fecha_salida IS NULL
-        WHERE sp.id_paciente = %s
-    """, (id,))
+    # ── Last caregiver round ─────────────────────────────────────────────────
+    _ronda_row   = db.one_sp("sp_sel_ultima_ronda_por_paciente", (id,))
+    ultima_ronda = _ronda_row["ultima_ronda"] if _ronda_row else None
 
     return render_template(
         "portal_familiar/paciente.html",
@@ -2603,10 +1615,7 @@ def api_nfc_lectura():
 
     # Option B: resolve by serial
     if not id_dispositivo and data.get("serial"):
-        device = db.one(
-            "SELECT id_dispositivo FROM dispositivos WHERE tipo='NFC' AND LOWER(id_serial)=LOWER(%s)",
-            [data["serial"]]
-        )
+        device = db.one_sp("sp_sel_dispositivo_por_serial_tipo", (data["serial"], "NFC"))
         if not device:
             return jsonify({"status": "error", "error": f"Serial '{data['serial']}' no registrado"}), 404
         id_dispositivo = device["id_dispositivo"]
@@ -2616,16 +1625,13 @@ def api_nfc_lectura():
 
     # Resolve id_receta from active link if not provided
     if not id_receta:
-        link = db.one(
-            "SELECT id_receta FROM receta_nfc WHERE id_dispositivo=%s AND fecha_fin_gestion IS NULL",
-            [id_dispositivo]
-        )
+        link = db.one_sp("sp_sel_receta_nfc_activa", (id_dispositivo,))
         if not link:
             return jsonify({"status": "error", "error": "No hay receta activa vinculada a este dispositivo NFC"}), 404
         id_receta = link["id_receta"]
 
     try:
-        next_id = db.scalar("SELECT COALESCE(MAX(id_lectura_nfc), 0) + 1 FROM lecturas_nfc")
+        next_id = db.one_sp("sp_sel_next_id_lectura_nfc")["next_id"]
         db.execute(
             "CALL sp_nfc_registrar_lectura(%s, %s, %s, NOW(), %s, %s)",
             (next_id, id_dispositivo, id_receta, tipo_lectura, resultado)
@@ -2670,20 +1676,14 @@ def api_beacon_deteccion():
 
     # ── Resolve beacon: id_beacon > serial > uuid+major+minor ─────────────────
     if not id_beacon and serial:
-        row = db.one(
-            "SELECT id_dispositivo FROM dispositivos WHERE tipo='BEACON' AND LOWER(id_serial)=LOWER(%s)",
-            [serial]
-        )
+        row = db.one_sp("sp_sel_dispositivo_por_serial_tipo", (serial, "BEACON"))
         if row:
             id_beacon = row["id_dispositivo"]
 
     if not id_beacon and data.get("uuid") and data.get("major") is not None and data.get("minor") is not None:
         uuid_prefix = str(data["uuid"]).upper()[:8]
         composite   = f"{uuid_prefix}-{data['major']}-{data['minor']}"
-        row = db.one(
-            "SELECT id_dispositivo FROM dispositivos WHERE tipo='BEACON' AND UPPER(id_serial)=%s",
-            [composite]
-        )
+        row = db.one_sp("sp_sel_dispositivo_por_serial_tipo", (composite, "BEACON"))
         if row:
             id_beacon = row["id_dispositivo"]
 
@@ -2691,13 +1691,7 @@ def api_beacon_deteccion():
         return jsonify({"status": "error", "message": "Beacon no identificado"}), 400
 
     # ── Resolve caregiver from asignacion_beacon ───────────────────────────────
-    cuidador = db.one(
-        """SELECT ab.id_cuidador, e.nombre || ' ' || e.apellido_p AS nombre
-           FROM asignacion_beacon ab
-           JOIN empleados e ON ab.id_cuidador = e.id_empleado
-           WHERE ab.id_dispositivo = %s AND ab.fecha_fin IS NULL""",
-        [id_beacon]
-    )
+    cuidador = db.one_sp("sp_sel_asignacion_beacon_cuidador", (id_beacon,))
     id_cuidador    = cuidador["id_cuidador"] if cuidador else None
     caregiver_name = cuidador["nombre"]      if cuidador else "Sin asignar"
 
@@ -2706,10 +1700,7 @@ def api_beacon_deteccion():
             "CALL sp_ins_deteccion_beacon(%s, %s, %s, %s)",
             (id_beacon, id_cuidador, rssi, gateway_id)
         )
-        row = db.one(
-            "SELECT id_deteccion FROM detecciones_beacon WHERE id_dispositivo=%s ORDER BY fecha_hora DESC LIMIT 1",
-            [id_beacon]
-        )
+        row = db.one_sp("sp_sel_ultima_deteccion_por_beacon", (id_beacon,))
         return jsonify({
             "status": "ok",
             "ok": True,
@@ -2731,17 +1722,7 @@ def sim_gps():
     """Admin form to simulate a GPS reading for a patient's device.
     Inserts into lecturas_gps which fires trg_bateria_baja_gps and trg_zona_exit_gps.
     """
-    dispositivos_gps = db.query("""
-        SELECT d.id_dispositivo, d.id_serial, d.modelo,
-               p.nombre || ' ' || p.apellido_p AS paciente,
-               ak.id_paciente
-        FROM dispositivos d
-        JOIN asignacion_kit ak ON ak.id_dispositivo_gps = d.id_dispositivo
-                              AND ak.fecha_fin IS NULL
-        JOIN pacientes p ON p.id_paciente = ak.id_paciente
-        WHERE d.tipo = 'GPS' AND d.estado = 'Activo' AND p.id_estado != 3
-        ORDER BY p.nombre
-    """)
+    dispositivos_gps = db.query_sp("sp_sel_dispositivos_gps_activos")
 
     result = None
     if request.method == "POST":
@@ -2753,15 +1734,8 @@ def sim_gps():
 
             db.execute("CALL sp_ins_lectura_gps(%s, %s, %s, %s, NULL)",
                        (id_dispositivo, latitud, longitud, nivel_bateria))
-            id_lectura = db.scalar("SELECT MAX(id_lectura) FROM lecturas_gps")
-
-            # Check what alerts were generated by the triggers
-            nuevas_alertas = db.query("""
-                SELECT id_alerta, tipo_alerta, estatus
-                FROM alertas
-                ORDER BY id_alerta DESC
-                LIMIT 3
-            """)
+            id_lectura     = db.one_sp("sp_sel_last_id_lectura_gps")["id_lectura"]
+            nuevas_alertas = db.query_sp("sp_sel_alertas_sim_recientes")
             result = {
                 "id_lectura": id_lectura,
                 "latitud": latitud,
@@ -2773,14 +1747,7 @@ def sim_gps():
         except Exception as e:
             flash(f"Error al simular lectura GPS: {e}", "error")
 
-    zonas_ref = db.query("""
-        SELECT z.id_zona, z.nombre_zona, z.latitud_centro, z.longitud_centro,
-               z.radio_metros, s.nombre_sede
-        FROM zonas z
-        LEFT JOIN sede_zonas sz ON sz.id_zona = z.id_zona
-        LEFT JOIN sedes s ON s.id_sede = sz.id_sede
-        ORDER BY z.id_zona
-    """)
+    zonas_ref = db.query_sp("sp_sel_zonas_ref")
 
     return render_template("sim_gps.html",
                            dispositivos_gps=dispositivos_gps,
@@ -2819,7 +1786,7 @@ def api_gps_lectura():
     try:
         db.execute("CALL sp_ins_lectura_gps(%s, %s, %s, %s, %s)",
                    (id_dispositivo, latitud, longitud, nivel_bateria, altura))
-        id_lectura = db.scalar("SELECT MAX(id_lectura) FROM lecturas_gps")
+        id_lectura = db.one_sp("sp_sel_last_id_lectura_gps")["id_lectura"]
         return jsonify({"status": "ok", "id_lectura": id_lectura})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 422
@@ -2836,9 +1803,6 @@ def api_gps_osmand():
     'id' can be the device's id_serial (string) or id_dispositivo (number).
     No auth required — only reachable on the local HTTP listener (port 5003).
     """
-    # Debug — log exactly what Traccar sends
-    print(f"[GPS] args={dict(request.args)} form={dict(request.form)} json={request.get_data(as_text=True)[:200]}")
-
     # Device id always comes from the query string
     device_id = request.args.get("id", "").strip()
 
@@ -2862,11 +1826,8 @@ def api_gps_osmand():
 
     try:
         # Resolve id_dispositivo — serial lookup first, then numeric id fallback
-        row = db.one(
-            "SELECT id_dispositivo FROM dispositivos WHERE id_serial = %s AND tipo = 'GPS'",
-            (device_id,)
-        )
-        if row:
+        row = db.one_sp("sp_sel_dispositivo_serial", (device_id,))
+        if row and row.get("tipo") == "GPS":
             id_dispositivo = row["id_dispositivo"]
         else:
             try:
@@ -2916,16 +1877,7 @@ def test_nfc_read():
     if not tag_serial:
         return jsonify({"status": "error", "message": "No serial received"}), 400
 
-    # Look up by exact serial, case-insensitive
-    device = db.one(
-        """
-        SELECT id_dispositivo, id_serial, modelo, estado
-        FROM dispositivos
-        WHERE tipo = 'NFC'
-          AND LOWER(id_serial) = LOWER(%s)
-        """,
-        [tag_serial],
-    )
+    device = db.one_sp("sp_sel_dispositivo_por_serial_tipo", (tag_serial, "NFC"))
 
     if not device:
         app.logger.info("Unknown NFC tag scanned: %s", tag_serial)
@@ -2935,16 +1887,10 @@ def test_nfc_read():
             "message": "Tag not registered. Add this serial to Dispositivos as type NFC.",
         })
 
-    # Find linked patient via asignacion_nfc (direct identity link)
-    patient = db.one(
-        """
-        SELECT p.id_paciente, p.nombre, p.apellido_p
-        FROM asignacion_nfc an
-        JOIN pacientes p ON an.id_paciente = p.id_paciente
-        WHERE an.id_dispositivo = %s AND an.fecha_fin IS NULL
-        """,
-        [device["id_dispositivo"]],
-    )
+    try:
+        patient = db.one_sp("sp_sel_paciente_por_nfc", (device["id_serial"],))
+    except Exception:
+        patient = None
 
     response = {
         "status": "found",
@@ -2974,4 +1920,5 @@ if __name__ == "__main__":
     threading.Thread(target=http_srv.serve_forever, daemon=True).start()
     print("  * Traccar/OsmAnd HTTP listener on http://0.0.0.0:5003")
 
-    app.run(debug=False, host="0.0.0.0", port=5000)
+    app.run(debug=False, host="0.0.0.0", port=5002,
+            ssl_context=("cert.pem", "key.pem"))

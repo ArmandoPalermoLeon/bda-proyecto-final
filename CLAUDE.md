@@ -133,8 +133,8 @@ Full integration plan is in `DEVICES.md`. **GPS is the central safety mechanism.
 | `RecetasProcedures.sql` | Applied | 10 stored procedures for receta/NFC module |
 | `BeaconProcedures.sql` | Applied | 1 SP legacy (sp_cuidador_registrar_ronda) |
 | `AppProcedures.sql` | Applied | 32 DML SPs — pacientes, cuidadores, enfermedades, contactos, kit GPS (incl. sp_kit_reasignar), turnos, asignacion_beacon, deteccion_beacon, alertas, farmacia, visitas, lecturas GPS |
-| `ViewsDB.sql` | Applied | **49 read-only views** covering all SELECT queries in app.py. Must be applied before SelectProcedures.sql. Note: `v_asignacion_nfc_paciente` omitted — `asignacion_nfc` table does not exist in the DDL. |
-| `SelectProcedures.sql` | Applied | **49 SPs `sp_sel_*`** — one per view, each opens a REFCURSOR. 3 are parameterized: `sp_sel_pacientes_por_contacto(p_id_contacto)`, `sp_sel_zonas_por_paciente(p_id_paciente)`, `sp_sel_alertas_por_sede(p_id_sede)`. These are what app.py must call instead of embedded SQL. |
+| `ViewsDB.sql` | Applied | **114 read-only views** covering all SELECT queries in app.py. Must be applied before SelectProcedures.sql. Note: `v_asignacion_nfc_paciente` omitted — `asignacion_nfc` table does not exist in the DDL. Added `v_clinica_cobertura_zonas` (SP 136). |
+| `SelectProcedures.sql` | Applied | **136 SPs `sp_sel_*`** — one per view, each opens a REFCURSOR. All embedded SQL in app.py has been migrated to these SPs. Bug fixes applied: SP 54 (`fecha_hora` added), SP 88 (now uses `v_nfc_activo`), SP 92 (`ORDER BY fecha_entrada` fixed). SP 136 (`sp_sel_clinica_cobertura_zonas`) added. |
 | `beacon_scanner.py` | Active | Python BLE scanner using bleak — run alongside Flask to detect caregiver beacons |
 | `TriggersDB.sql` | Applied | 3 DB triggers defined (cobertura zona, batería baja, zona exit) — all currently DISABLED via DisableTriggers.sql |
 | `DisableTriggers.sql` | Applied | Disables all 3 triggers; apply after TriggersDB.sql on fresh schema |
