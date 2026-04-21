@@ -1171,7 +1171,7 @@ LEFT JOIN lecturas_nfc ln
 WHERE p.id_estado != 3
 GROUP BY p.id_paciente, p.nombre, p.apellido_p
 HAVING COUNT(ln.id_lectura_nfc) > 0
-ORDER BY exitosas::float / NULLIF(COUNT(ln.id_lectura_nfc), 0) DESC;
+ORDER BY COUNT(ln.id_lectura_nfc) FILTER (WHERE ln.resultado = 'Exitosa')::float / NULLIF(COUNT(ln.id_lectura_nfc), 0) DESC;
 
 
 -- -----------------------------------------------------------------------------
